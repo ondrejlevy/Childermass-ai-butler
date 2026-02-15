@@ -230,12 +230,29 @@ def get_site_id(config: dict | None = None) -> str | None:
 
 
 def verify_ssl(config: dict | None = None) -> bool:
-    """Check if SSL verification is enabled."""
+    """Check if SSL verification is enabled.
+    
+    Returns True by default for security. Only returns False if explicitly
+    configured with verify_ssl: false in config.
+    """
     if config is None:
         config = load_config()
     if config is None:
-        return False
-    return config.get("verify_ssl", False)
+        return True  # Secure default
+    
+    # Default to True (secure), only disable if explicitly set to False
+    verify = config.get("verify_ssl", True)
+    
+    if not verify:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "SSL certificate verification is DISABLED. "
+            "This makes the connection vulnerable to man-in-the-middle attacks. "
+            "Only use this in trusted networks with self-signed certificates."
+        )
+    
+    return verify
 
 
 def setup_interactive() -> None:
@@ -270,8 +287,9 @@ def setup_interactive() -> None:
 
     site_id = input("Default Site ID (UUID, or leave empty to discover later): ").strip()
 
-    verify_ssl_str = input("Verify SSL certificate? [y/N]: ").strip().lower()
-    ssl_verify = verify_ssl_str == "y"
+    verify_ssl_str = input("Verify SSL certificate? [Y/n]: ").strip().lower()
+    # Default to True (secure) unless explicitly disabled
+    ssl_verify = verify_ssl_str != "n"
 
     # Save
     save_config(
