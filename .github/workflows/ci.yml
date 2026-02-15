@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload Bandit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bandit-security-report
           path: bandit-report.json
@@ -189,7 +189,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.mcp-server }}
           path: |
@@ -229,7 +229,7 @@ jobs:
 
       - name: Upload combined coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: combined-coverage-report
           path: htmlcov-combined/
