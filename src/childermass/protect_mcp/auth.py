@@ -217,6 +217,8 @@ def get_credentials(config: dict | None | object = _GET_CREDENTIALS_SENTINEL) ->
         )
         raise RuntimeError(msg)
 
+    # At this point, config is guaranteed to be dict (not None, not sentinel)
+    assert isinstance(config, dict)
     return config["username"], config["password"]
 
 

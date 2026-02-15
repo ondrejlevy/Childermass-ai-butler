@@ -450,7 +450,9 @@ class TestAuthentication:
         if not KEYRING_AVAILABLE:
             pytest.skip("Keyring not available")
 
-        mock_keyring.get_password.return_value = "test_api_key_12345678901234567890"  # gitleaks:allow
+        mock_keyring.get_password.return_value = (
+            "test_api_key_12345678901234567890"  # gitleaks:allow
+        )
 
         key = get_api_key()
         assert key == "test_api_key_12345678901234567890"

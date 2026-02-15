@@ -159,9 +159,7 @@ def _load_from_keyring(account: str) -> Credentials | None:
         if not token_json:
             return None
 
-        creds: Credentials = Credentials.from_authorized_user_info(
-            json.loads(token_json), SCOPES
-        )
+        creds: Credentials = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
         return creds
     except Exception as e:
         logger.warning("Keyring load failed: %s", e)

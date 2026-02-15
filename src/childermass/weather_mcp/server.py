@@ -164,9 +164,7 @@ def weather_check_rain(location: str, hours: int = 12, units: str = "metric") ->
                         "probability": forecast.pop * 100,
                         "rain_mm": forecast.rain_3h or 0.0,
                         "conditions": (
-                            forecast.conditions[0].description
-                            if forecast.conditions
-                            else "unknown"
+                            forecast.conditions[0].description if forecast.conditions else "unknown"
                         ),
                     }
                 )
