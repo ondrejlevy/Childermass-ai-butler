@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-calendar")
 

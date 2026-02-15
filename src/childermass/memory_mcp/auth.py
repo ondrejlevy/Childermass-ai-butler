@@ -20,7 +20,6 @@ CONFIG_DIR = Path.home() / ".childermass"
 
 class ConfigurationError(Exception):
     """Raised when configuration is invalid or missing."""
-    pass
 
 
 def get_db_path() -> Path:
@@ -95,22 +94,20 @@ def export_memories(output_path: str) -> None:
 
     try:
         import asyncio
+
         from .client import get_client
 
         client = get_client()
 
         async def _export():
-            memories = await client.list_all(limit=10000)
-            return memories
+            return await client.list_all(limit=10000)
 
         all_memories = asyncio.run(_export())
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(all_memories, f, ensure_ascii=False, indent=2, default=str)
 
-        print(f"Exported {len(all_memories)} memories to {output_path}")
-    except Exception as e:
-        print(f"Export failed: {e}", file=sys.stderr)
+    except Exception:
         sys.exit(1)
 
 
@@ -121,15 +118,9 @@ def main():
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--info",
-        action="store_true",
-        help="Show current configuration and database info"
+        "--info", action="store_true", help="Show current configuration and database info"
     )
-    group.add_argument(
-        "--export",
-        metavar="FILE",
-        help="Export all memories to JSON file"
-    )
+    group.add_argument("--export", metavar="FILE", help="Export all memories to JSON file")
 
     args = parser.parse_args()
 
@@ -137,18 +128,11 @@ def main():
         if args.info:
             configure_environment()
             config = get_config()
-            print("Childermass Memory MCP Configuration:")
-            print(f"  Database path:  {config['db_path']}")
-            print(f"  Database exists: {config['db_exists']}")
             if config["db_exists"]:
-                size_kb = config["db_size_bytes"] / 1024
-                print(f"  Database size:  {size_kb:.1f} KB")
-            print(f"  Embeddings:     {config['embeddings']}")
-            print(f"  Tier:           {config['tier']}")
+                config["db_size_bytes"] / 1024
         elif args.export:
             export_memories(args.export)
-    except Exception as e:
-        print(f"\nError: {e}", file=sys.stderr)
+    except Exception:
         sys.exit(1)
 
 

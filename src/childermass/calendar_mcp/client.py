@@ -16,7 +16,7 @@ Security features:
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from googleapiclient.discovery import Resource, build
 
@@ -40,6 +40,7 @@ from .security import (
     validate_send_updates,
     validate_timezone,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +138,11 @@ def get_calendar_service(account: str | None = None) -> Resource:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Calendar accounts found. Run:\n"
                 "  python -m childermass.calendar_mcp.auth --account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
         if account == "default":
             account = None
@@ -170,32 +172,32 @@ def get_account_email(account: str | None = None) -> str:
 
 def _now_rfc3339() -> str:
     """Get current time in RFC3339 format."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
 def _date_offset_rfc3339(days: int = 0) -> str:
     """Get RFC3339 datetime offset by N days from now."""
-    dt = datetime.now(timezone.utc) + timedelta(days=days)
+    dt = datetime.now(UTC) + timedelta(days=days)
     return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
 def _today_start_rfc3339() -> str:
     """Get start of today in RFC3339 (UTC)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     return start.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _today_end_rfc3339() -> str:
     """Get end of today in RFC3339 (UTC)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     end = now.replace(hour=23, minute=59, second=59, microsecond=0)
     return end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _week_start_rfc3339() -> str:
     """Get start of current week (Monday) in RFC3339."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     monday = now - timedelta(days=now.weekday())
     start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
     return start.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -203,7 +205,7 @@ def _week_start_rfc3339() -> str:
 
 def _week_end_rfc3339(weeks: int = 1) -> str:
     """Get end of Nth week from start of current week."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     monday = now - timedelta(days=now.weekday())
     end = monday + timedelta(weeks=weeks)
     end = end.replace(hour=23, minute=59, second=59, microsecond=0)
@@ -300,11 +302,7 @@ def list_calendars(account: str | None = None) -> list[CalendarInfo]:
     page_token = None
 
     while True:
-        result = (
-            service.calendarList()
-            .list(pageToken=page_token)
-            .execute()
-        )
+        result = service.calendarList().list(pageToken=page_token).execute()
 
         for cal in result.get("items", []):
             calendars.append(
@@ -397,10 +395,7 @@ def list_events(
     service = get_calendar_service(account)
 
     # Default time_min to now if not specified
-    if not time_min:
-        time_min = _now_rfc3339()
-    else:
-        time_min = validate_datetime(time_min)
+    time_min = _now_rfc3339() if not time_min else validate_datetime(time_min)
 
     if time_max:
         time_max = validate_datetime(time_max)
@@ -465,11 +460,11 @@ def list_events_all_calendars(
         Sorted list of CalendarEvent from calendars
     """
     calendars = list_calendars(account)
-    
+
     # Filter to owned calendars only if requested
     if owned_only:
         calendars = [cal for cal in calendars if cal.access_role == "owner"]
-    
+
     all_events: list[CalendarEvent] = []
 
     for cal in calendars:
@@ -519,11 +514,7 @@ def get_event(
     rate_limiter.check(acct_key, "get_event")
 
     service = get_calendar_service(account)
-    event = (
-        service.events()
-        .get(calendarId=calendar_id, eventId=event_id)
-        .execute()
-    )
+    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
     return _parse_event(event, calendar_id)
 
@@ -621,9 +612,7 @@ def create_event(
     if location:
         event_body["location"] = location
     if attendee_list:
-        event_body["attendees"] = [
-            {"email": email} for email in attendee_list
-        ]
+        event_body["attendees"] = [{"email": email} for email in attendee_list]
     if recurrence:
         event_body["recurrence"] = recurrence
     if color_id:
@@ -637,9 +626,7 @@ def create_event(
     if reminders_minutes:
         event_body["reminders"] = {
             "useDefault": False,
-            "overrides": [
-                {"method": "popup", "minutes": m} for m in reminders_minutes
-            ],
+            "overrides": [{"method": "popup", "minutes": m} for m in reminders_minutes],
         }
 
     # Google Meet
@@ -738,11 +725,7 @@ def update_event(
     service = get_calendar_service(account)
 
     # Step 1: GET current event (with etag)
-    existing = (
-        service.events()
-        .get(calendarId=calendar_id, eventId=event_id)
-        .execute()
-    )
+    existing = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
     # Step 2: Merge changes
     if summary is not None:
@@ -794,9 +777,7 @@ def update_event(
 
     if attendees is not None:
         attendee_list = validate_attendees(attendees)
-        existing["attendees"] = [
-            {"email": email} for email in attendee_list
-        ]
+        existing["attendees"] = [{"email": email} for email in attendee_list]
 
     if recurrence is not None:
         existing["recurrence"] = validate_recurrence(recurrence)
@@ -804,9 +785,7 @@ def update_event(
     if reminders_minutes is not None:
         existing["reminders"] = {
             "useDefault": False,
-            "overrides": [
-                {"method": "popup", "minutes": m} for m in reminders_minutes
-            ],
+            "overrides": [{"method": "popup", "minutes": m} for m in reminders_minutes],
         }
 
     # Step 3: UPDATE with etag (If-Match header for atomicity)
@@ -1034,10 +1013,7 @@ def list_recurring_instances(
         "maxResults": max_results,
     }
 
-    if not time_min:
-        time_min = _now_rfc3339()
-    else:
-        time_min = validate_datetime(time_min)
+    time_min = _now_rfc3339() if not time_min else validate_datetime(time_min)
     kwargs["timeMin"] = time_min
 
     if time_max:
@@ -1108,11 +1084,13 @@ def query_free_busy(
         else:
             slots = []
             for busy in cal_data.get("busy", []):
-                slots.append({
-                    "calendar_id": cal_id,
-                    "start": busy.get("start", ""),
-                    "end": busy.get("end", ""),
-                })
+                slots.append(
+                    {
+                        "calendar_id": cal_id,
+                        "start": busy.get("start", ""),
+                        "end": busy.get("end", ""),
+                    }
+                )
             calendars_busy[cal_id] = slots
 
     return {"calendars": calendars_busy, "errors": errors}

@@ -19,8 +19,6 @@ import validators
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -79,17 +77,18 @@ def validate_note_title(title: str) -> str:
         return ""
 
     if not isinstance(title, str):
-        raise SecurityError("Title must be a string")
+        msg = "Title must be a string"
+        raise SecurityError(msg)
 
     # Reject control characters (except newline/tab which are valid)
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in title for char in suspicious):
-        raise SecurityError("Title contains invalid control characters")
+        msg = "Title contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(title) > MAX_TITLE_LENGTH:
-        raise SecurityError(
-            f"Title too long: {len(title)} chars (max {MAX_TITLE_LENGTH})"
-        )
+        msg = f"Title too long: {len(title)} chars (max {MAX_TITLE_LENGTH})"
+        raise SecurityError(msg)
 
     return title
 
@@ -104,16 +103,17 @@ def validate_note_text(text: str) -> str:
         return ""
 
     if not isinstance(text, str):
-        raise SecurityError("Text must be a string")
+        msg = "Text must be a string"
+        raise SecurityError(msg)
 
     suspicious = ["\0", chr(0x1B)]
     if any(char in text for char in suspicious):
-        raise SecurityError("Text contains invalid control characters")
+        msg = "Text contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(text) > MAX_TEXT_LENGTH:
-        raise SecurityError(
-            f"Text too long: {len(text)} chars (max {MAX_TEXT_LENGTH})"
-        )
+        msg = f"Text too long: {len(text)} chars (max {MAX_TEXT_LENGTH})"
+        raise SecurityError(msg)
 
     return text
 
@@ -125,18 +125,19 @@ def validate_list_item_text(text: str) -> str:
     Returns validated text. Raises SecurityError on invalid input.
     """
     if not text or not isinstance(text, str):
-        raise SecurityError("List item text is required")
+        msg = "List item text is required"
+        raise SecurityError(msg)
 
     suspicious = ["\0", chr(0x1B)]
     if any(char in text for char in suspicious):
-        raise SecurityError("List item text contains invalid control characters")
+        msg = "List item text contains invalid control characters"
+        raise SecurityError(msg)
 
     text = text.strip()
 
     if len(text) > MAX_LIST_ITEM_LENGTH:
-        raise SecurityError(
-            f"List item too long: {len(text)} chars (max {MAX_LIST_ITEM_LENGTH})"
-        )
+        msg = f"List item too long: {len(text)} chars (max {MAX_LIST_ITEM_LENGTH})"
+        raise SecurityError(msg)
 
     return text
 
@@ -148,20 +149,24 @@ def validate_note_id(note_id: str) -> str:
     Returns validated note ID. Raises SecurityError on invalid input.
     """
     if not note_id or not isinstance(note_id, str):
-        raise SecurityError("Note ID is required")
+        msg = "Note ID is required"
+        raise SecurityError(msg)
 
     note_id = note_id.strip()
 
     # Reject control characters
     if any(char in note_id for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Note ID contains invalid control characters")
+        msg = "Note ID contains invalid control characters"
+        raise SecurityError(msg)
 
     # Keep note IDs are alphanumeric with possible hyphens/underscores/dots
     if not re.match(r"^[a-zA-Z0-9._-]+$", note_id):
-        raise SecurityError(f"Invalid note ID format: {note_id}")
+        msg = f"Invalid note ID format: {note_id}"
+        raise SecurityError(msg)
 
     if len(note_id) > 200:
-        raise SecurityError("Note ID too long")
+        msg = "Note ID too long"
+        raise SecurityError(msg)
 
     return note_id
 
@@ -173,18 +178,22 @@ def validate_item_id(item_id: str) -> str:
     Returns validated item ID. Raises SecurityError on invalid input.
     """
     if not item_id or not isinstance(item_id, str):
-        raise SecurityError("Item ID is required")
+        msg = "Item ID is required"
+        raise SecurityError(msg)
 
     item_id = item_id.strip()
 
     if any(char in item_id for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Item ID contains invalid control characters")
+        msg = "Item ID contains invalid control characters"
+        raise SecurityError(msg)
 
     if not re.match(r"^[a-zA-Z0-9._-]+$", item_id):
-        raise SecurityError(f"Invalid item ID format: {item_id}")
+        msg = f"Invalid item ID format: {item_id}"
+        raise SecurityError(msg)
 
     if len(item_id) > 200:
-        raise SecurityError("Item ID too long")
+        msg = "Item ID too long"
+        raise SecurityError(msg)
 
     return item_id
 
@@ -196,14 +205,14 @@ def validate_color(color: str) -> str:
     Returns normalised color name. Raises SecurityError on invalid input.
     """
     if not color or not isinstance(color, str):
-        raise SecurityError("Color is required")
+        msg = "Color is required"
+        raise SecurityError(msg)
 
     color = color.lower().strip()
 
     if color not in VALID_COLORS:
-        raise SecurityError(
-            f"Invalid color: {color}. Valid colors: {', '.join(sorted(VALID_COLORS))}"
-        )
+        msg = f"Invalid color: {color}. Valid colors: {', '.join(sorted(VALID_COLORS))}"
+        raise SecurityError(msg)
 
     return color
 
@@ -215,14 +224,14 @@ def validate_note_type(note_type: str) -> str:
     Returns normalised note type. Raises SecurityError on invalid input.
     """
     if not note_type or not isinstance(note_type, str):
-        raise SecurityError("Note type is required")
+        msg = "Note type is required"
+        raise SecurityError(msg)
 
     note_type = note_type.lower().strip()
 
     if note_type not in VALID_NOTE_TYPES:
-        raise SecurityError(
-            f"Invalid note type: {note_type}. Valid types: {', '.join(sorted(VALID_NOTE_TYPES))}"
-        )
+        msg = f"Invalid note type: {note_type}. Valid types: {', '.join(sorted(VALID_NOTE_TYPES))}"
+        raise SecurityError(msg)
 
     return note_type
 
@@ -234,18 +243,19 @@ def validate_label_name(name: str) -> str:
     Returns validated label name. Raises SecurityError on invalid input.
     """
     if not name or not isinstance(name, str):
-        raise SecurityError("Label name is required")
+        msg = "Label name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
 
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in name for char in suspicious):
-        raise SecurityError("Label name contains invalid control characters")
+        msg = "Label name contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(name) > MAX_LABEL_LENGTH:
-        raise SecurityError(
-            f"Label name too long: {len(name)} chars (max {MAX_LABEL_LENGTH})"
-        )
+        msg = f"Label name too long: {len(name)} chars (max {MAX_LABEL_LENGTH})"
+        raise SecurityError(msg)
 
     return name
 
@@ -257,7 +267,8 @@ def validate_email(email: str) -> str:
     Returns normalised email address. Raises SecurityError on invalid input.
     """
     if not email or not isinstance(email, str):
-        raise SecurityError("Email address is required")
+        msg = "Email address is required"
+        raise SecurityError(msg)
 
     email = email.strip()
 
@@ -271,11 +282,13 @@ def validate_email(email: str) -> str:
 
     # Check for injection characters
     if any(char in email_lower for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Email contains invalid control characters")
+        msg = "Email contains invalid control characters"
+        raise SecurityError(msg)
 
     # Basic email format check
     if not validators.email(email_lower):
-        raise SecurityError(f"Invalid email address format: {email}")
+        msg = f"Invalid email address format: {email}"
+        raise SecurityError(msg)
 
     return email_lower
 
@@ -287,10 +300,12 @@ def validate_query(query: str) -> str:
 
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in query for char in suspicious):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > 1000:
-        raise SecurityError("Query too long (max 1000 characters)")
+        msg = "Query too long (max 1000 characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -417,10 +432,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

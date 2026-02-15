@@ -17,8 +17,6 @@ from typing import Any
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -50,21 +48,20 @@ def validate_tasklist_id(tasklist_id: str) -> str:
     Returns normalised task list ID.
     """
     if not tasklist_id or not isinstance(tasklist_id, str):
-        raise SecurityError("Task list ID is required")
+        msg = "Task list ID is required"
+        raise SecurityError(msg)
 
     tasklist_id = tasklist_id.strip()
 
     # Check for injection characters
     if any(char in tasklist_id for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError(
-            "Task list ID contains invalid control characters"
-        )
+        msg = "Task list ID contains invalid control characters"
+        raise SecurityError(msg)
 
     # Task list IDs are alphanumeric strings (base64-like)
     if not re.match(r"^[a-zA-Z0-9_-]+$", tasklist_id):
-        raise SecurityError(
-            f"Invalid task list ID format: {tasklist_id}"
-        )
+        msg = f"Invalid task list ID format: {tasklist_id}"
+        raise SecurityError(msg)
 
     return tasklist_id
 
@@ -76,17 +73,20 @@ def validate_task_id(task_id: str) -> str:
     Task IDs are opaque strings assigned by Google.
     """
     if not task_id or not isinstance(task_id, str):
-        raise SecurityError("Task ID is required")
+        msg = "Task ID is required"
+        raise SecurityError(msg)
 
     task_id = task_id.strip()
 
     # Check for injection characters
     if any(char in task_id for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Task ID contains invalid control characters")
+        msg = "Task ID contains invalid control characters"
+        raise SecurityError(msg)
 
     # Task IDs are alphanumeric strings
     if not re.match(r"^[a-zA-Z0-9_-]+$", task_id):
-        raise SecurityError(f"Invalid task ID format: {task_id}")
+        msg = f"Invalid task ID format: {task_id}"
+        raise SecurityError(msg)
 
     return task_id
 
@@ -99,23 +99,22 @@ def validate_task_title(title: str) -> str:
     Maximum length: 1024 characters.
     """
     if not title or not isinstance(title, str):
-        raise SecurityError("Task title is required")
+        msg = "Task title is required"
+        raise SecurityError(msg)
 
     title = title.strip()
     if not title:
-        raise SecurityError("Task title cannot be empty")
+        msg = "Task title cannot be empty"
+        raise SecurityError(msg)
 
     # Reject newlines (potential injection)
     if any(c in title for c in ["\r"]):
-        raise SecurityError(
-            "Task title contains invalid carriage return characters"
-        )
+        msg = "Task title contains invalid carriage return characters"
+        raise SecurityError(msg)
 
     if len(title) > MAX_TITLE_LENGTH:
-        raise SecurityError(
-            f"Task title too long: {len(title)} chars "
-            f"(max {MAX_TITLE_LENGTH})"
-        )
+        msg = f"Task title too long: {len(title)} chars (max {MAX_TITLE_LENGTH})"
+        raise SecurityError(msg)
 
     return title
 
@@ -139,10 +138,8 @@ def validate_task_notes(notes: str) -> str:
         return ""
 
     if len(notes) > MAX_NOTES_LENGTH:
-        raise SecurityError(
-            f"Task notes too long: {len(notes)} chars "
-            f"(max {MAX_NOTES_LENGTH})"
-        )
+        msg = f"Task notes too long: {len(notes)} chars (max {MAX_NOTES_LENGTH})"
+        raise SecurityError(msg)
 
     return notes
 
@@ -154,15 +151,17 @@ def validate_task_status(status: str) -> str:
     Only "needsAction" and "completed" are valid.
     """
     if not status or not isinstance(status, str):
-        raise SecurityError("Task status is required")
+        msg = "Task status is required"
+        raise SecurityError(msg)
 
     status = status.strip()
 
     if status not in VALID_TASK_STATUSES:
-        raise SecurityError(
+        msg = (
             f"Invalid task status: {status}. "
             f"Must be one of: {', '.join(sorted(VALID_TASK_STATUSES))}"
         )
+        raise SecurityError(msg)
 
     return status
 
@@ -177,7 +176,8 @@ def validate_due_date(due: str) -> str:
     - Date only: 2024-01-15 (will be converted to RFC3339)
     """
     if not due or not isinstance(due, str):
-        raise SecurityError("Due date is required")
+        msg = "Due date is required"
+        raise SecurityError(msg)
 
     due = due.strip()
 
@@ -186,18 +186,15 @@ def validate_due_date(due: str) -> str:
         return f"{due}T00:00:00.000Z"
 
     # Full RFC3339 datetime
-    rfc3339_pattern = (
-        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
-        r"(\.\d+)?"
-        r"(Z|[+\-]\d{2}:\d{2})$"
-    )
+    rfc3339_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+\-]\d{2}:\d{2})$"
 
     if not re.match(rfc3339_pattern, due):
-        raise SecurityError(
+        msg = (
             f"Invalid due date format: {due}. "
             "Expected RFC3339 (e.g., 2024-01-15T00:00:00Z) "
             "or date (2024-01-15)"
         )
+        raise SecurityError(msg)
 
     return due
 
@@ -205,9 +202,11 @@ def validate_due_date(due: str) -> str:
 def validate_max_results(max_results: int) -> int:
     """Validate max_results parameter."""
     if max_results < 1:
-        raise SecurityError("max_results must be at least 1")
+        msg = "max_results must be at least 1"
+        raise SecurityError(msg)
     if max_results > 100:
-        raise SecurityError("max_results cannot exceed 100")
+        msg = "max_results cannot exceed 100"
+        raise SecurityError(msg)
     return max_results
 
 
@@ -219,12 +218,12 @@ def validate_search_query(query: str) -> str:
     # Reject control characters
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in query for char in suspicious):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > MAX_QUERY_LENGTH:
-        raise SecurityError(
-            f"Query too long (max {MAX_QUERY_LENGTH} characters)"
-        )
+        msg = f"Query too long (max {MAX_QUERY_LENGTH} characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -345,10 +344,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

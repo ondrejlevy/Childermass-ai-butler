@@ -17,17 +17,13 @@ from typing import Any
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 # UniFi Network API uses UUIDs for IDs
-_UUID_PATTERN = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 # VLAN ID range
 MIN_VLAN_ID = 1
@@ -62,7 +58,10 @@ ALLOWED_IP_VERSIONS = {"IPv4", "IPv6", "BOTH"}
 
 # Allowed connection state filters
 ALLOWED_CONNECTION_STATES = {
-    "NEW", "ESTABLISHED", "RELATED", "INVALID",
+    "NEW",
+    "ESTABLISHED",
+    "RELATED",
+    "INVALID",
 }
 
 # Allowed schedule modes
@@ -81,15 +80,14 @@ def validate_uuid(value: str, field_name: str = "ID") -> str:
     Returns normalised UUID. Raises SecurityError on invalid input.
     """
     if not value or not isinstance(value, str):
-        raise SecurityError(f"{field_name} is required")
+        msg = f"{field_name} is required"
+        raise SecurityError(msg)
 
     value = value.strip().lower()
 
     if not _UUID_PATTERN.match(value):
-        raise SecurityError(
-            f"Invalid {field_name} format: expected UUID "
-            "(xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
-        )
+        msg = f"Invalid {field_name} format: expected UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+        raise SecurityError(msg)
 
     return value
 
@@ -122,12 +120,12 @@ def validate_voucher_id(voucher_id: str) -> str:
 def validate_vlan_id(vlan_id: int) -> int:
     """Validate VLAN ID range (1-4094)."""
     if not isinstance(vlan_id, int):
-        raise SecurityError("VLAN ID must be an integer")
+        msg = "VLAN ID must be an integer"
+        raise SecurityError(msg)
 
     if vlan_id < MIN_VLAN_ID or vlan_id > MAX_VLAN_ID:
-        raise SecurityError(
-            f"VLAN ID must be between {MIN_VLAN_ID} and {MAX_VLAN_ID}"
-        )
+        msg = f"VLAN ID must be between {MIN_VLAN_ID} and {MAX_VLAN_ID}"
+        raise SecurityError(msg)
 
     return vlan_id
 
@@ -135,21 +133,23 @@ def validate_vlan_id(vlan_id: int) -> int:
 def validate_network_name(name: str) -> str:
     """Validate network name."""
     if not name or not isinstance(name, str):
-        raise SecurityError("Network name is required")
+        msg = "Network name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
 
     if len(name) < MIN_NETWORK_NAME_LENGTH:
-        raise SecurityError("Network name is too short")
+        msg = "Network name is too short"
+        raise SecurityError(msg)
 
     if len(name) > MAX_NETWORK_NAME_LENGTH:
-        raise SecurityError(
-            f"Network name too long: max {MAX_NETWORK_NAME_LENGTH} characters"
-        )
+        msg = f"Network name too long: max {MAX_NETWORK_NAME_LENGTH} characters"
+        raise SecurityError(msg)
 
     # Reject control characters and dangerous patterns
     if any(c in name for c in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Network name contains invalid characters")
+        msg = "Network name contains invalid characters"
+        raise SecurityError(msg)
 
     return name
 
@@ -157,17 +157,18 @@ def validate_network_name(name: str) -> str:
 def validate_policy_name(name: str) -> str:
     """Validate firewall policy name."""
     if not name or not isinstance(name, str):
-        raise SecurityError("Policy name is required")
+        msg = "Policy name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
 
     if len(name) > MAX_POLICY_NAME_LENGTH:
-        raise SecurityError(
-            f"Policy name too long: max {MAX_POLICY_NAME_LENGTH} characters"
-        )
+        msg = f"Policy name too long: max {MAX_POLICY_NAME_LENGTH} characters"
+        raise SecurityError(msg)
 
     if any(c in name for c in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Policy name contains invalid characters")
+        msg = "Policy name contains invalid characters"
+        raise SecurityError(msg)
 
     return name
 
@@ -175,15 +176,17 @@ def validate_policy_name(name: str) -> str:
 def validate_policy_action(action: str) -> str:
     """Validate firewall policy action type."""
     if not action or not isinstance(action, str):
-        raise SecurityError("Policy action is required")
+        msg = "Policy action is required"
+        raise SecurityError(msg)
 
     action = action.strip().upper()
 
     if action not in ALLOWED_POLICY_ACTIONS:
-        raise SecurityError(
+        msg = (
             f"Invalid policy action: {action!r}. "
             f"Allowed: {', '.join(sorted(ALLOWED_POLICY_ACTIONS))}"
         )
+        raise SecurityError(msg)
 
     return action
 
@@ -191,15 +194,14 @@ def validate_policy_action(action: str) -> str:
 def validate_ip_version(version: str) -> str:
     """Validate IP version scope."""
     if not version or not isinstance(version, str):
-        raise SecurityError("IP version is required")
+        msg = "IP version is required"
+        raise SecurityError(msg)
 
     version = version.strip()
 
     if version not in ALLOWED_IP_VERSIONS:
-        raise SecurityError(
-            f"Invalid IP version: {version!r}. "
-            f"Allowed: {', '.join(sorted(ALLOWED_IP_VERSIONS))}"
-        )
+        msg = f"Invalid IP version: {version!r}. Allowed: {', '.join(sorted(ALLOWED_IP_VERSIONS))}"
+        raise SecurityError(msg)
 
     return version
 
@@ -207,10 +209,12 @@ def validate_ip_version(version: str) -> str:
 def validate_max_results(value: int, maximum: int = MAX_RESULTS_PER_QUERY) -> int:
     """Validate max_results / limit parameter."""
     if not isinstance(value, int) or value < 1:
-        raise SecurityError("max_results must be a positive integer")
+        msg = "max_results must be a positive integer"
+        raise SecurityError(msg)
 
     if value > maximum:
-        raise SecurityError(f"max_results too large: max {maximum}")
+        msg = f"max_results too large: max {maximum}"
+        raise SecurityError(msg)
 
     return value
 
@@ -218,7 +222,8 @@ def validate_max_results(value: int, maximum: int = MAX_RESULTS_PER_QUERY) -> in
 def validate_offset(value: int) -> int:
     """Validate pagination offset."""
     if not isinstance(value, int) or value < 0:
-        raise SecurityError("offset must be a non-negative integer")
+        msg = "offset must be a non-negative integer"
+        raise SecurityError(msg)
 
     return value
 
@@ -240,54 +245,56 @@ def validate_voucher_params(
 
     if time_limit_minutes is not None:
         if not isinstance(time_limit_minutes, int) or time_limit_minutes < 1:
-            raise SecurityError("time_limit_minutes must be a positive integer")
+            msg = "time_limit_minutes must be a positive integer"
+            raise SecurityError(msg)
         if time_limit_minutes > MAX_VOUCHER_TIME_LIMIT_MINUTES:
-            raise SecurityError(
-                f"time_limit_minutes too large: max {MAX_VOUCHER_TIME_LIMIT_MINUTES}"
-            )
+            msg = f"time_limit_minutes too large: max {MAX_VOUCHER_TIME_LIMIT_MINUTES}"
+            raise SecurityError(msg)
         validated["timeLimitMinutes"] = time_limit_minutes
 
     if data_limit_mb is not None:
         if not isinstance(data_limit_mb, int) or data_limit_mb < 1:
-            raise SecurityError("data_limit_mb must be a positive integer")
+            msg = "data_limit_mb must be a positive integer"
+            raise SecurityError(msg)
         if data_limit_mb > MAX_VOUCHER_DATA_LIMIT_MB:
-            raise SecurityError(
-                f"data_limit_mb too large: max {MAX_VOUCHER_DATA_LIMIT_MB}"
-            )
+            msg = f"data_limit_mb too large: max {MAX_VOUCHER_DATA_LIMIT_MB}"
+            raise SecurityError(msg)
         validated["dataUsageLimitMBytes"] = data_limit_mb
 
     if download_limit_kbps is not None:
         if not isinstance(download_limit_kbps, int) or download_limit_kbps < 0:
-            raise SecurityError("download_limit_kbps must be a non-negative integer")
+            msg = "download_limit_kbps must be a non-negative integer"
+            raise SecurityError(msg)
         if download_limit_kbps > MAX_VOUCHER_RATE_LIMIT_KBPS:
-            raise SecurityError(
-                f"download_limit_kbps too large: max {MAX_VOUCHER_RATE_LIMIT_KBPS}"
-            )
+            msg = f"download_limit_kbps too large: max {MAX_VOUCHER_RATE_LIMIT_KBPS}"
+            raise SecurityError(msg)
         validated["rxRateLimitKbps"] = download_limit_kbps
 
     if upload_limit_kbps is not None:
         if not isinstance(upload_limit_kbps, int) or upload_limit_kbps < 0:
-            raise SecurityError("upload_limit_kbps must be a non-negative integer")
+            msg = "upload_limit_kbps must be a non-negative integer"
+            raise SecurityError(msg)
         if upload_limit_kbps > MAX_VOUCHER_RATE_LIMIT_KBPS:
-            raise SecurityError(
-                f"upload_limit_kbps too large: max {MAX_VOUCHER_RATE_LIMIT_KBPS}"
-            )
+            msg = f"upload_limit_kbps too large: max {MAX_VOUCHER_RATE_LIMIT_KBPS}"
+            raise SecurityError(msg)
         validated["txRateLimitKbps"] = upload_limit_kbps
 
     if guest_limit is not None:
         if not isinstance(guest_limit, int) or guest_limit < 1:
-            raise SecurityError("guest_limit must be a positive integer")
+            msg = "guest_limit must be a positive integer"
+            raise SecurityError(msg)
         if guest_limit > MAX_VOUCHER_GUEST_LIMIT:
-            raise SecurityError(
-                f"guest_limit too large: max {MAX_VOUCHER_GUEST_LIMIT}"
-            )
+            msg = f"guest_limit too large: max {MAX_VOUCHER_GUEST_LIMIT}"
+            raise SecurityError(msg)
         validated["authorizedGuestLimit"] = guest_limit
 
     if count is not None:
         if not isinstance(count, int) or count < 1:
-            raise SecurityError("count must be a positive integer")
+            msg = "count must be a positive integer"
+            raise SecurityError(msg)
         if count > MAX_VOUCHER_COUNT:
-            raise SecurityError(f"count too large: max {MAX_VOUCHER_COUNT}")
+            msg = f"count too large: max {MAX_VOUCHER_COUNT}"
+            raise SecurityError(msg)
         validated["count"] = count
 
     return validated
@@ -303,20 +310,21 @@ def validate_filter_expression(value: str | None) -> str | None:
         return None
 
     if not isinstance(value, str):
-        raise SecurityError("filter must be a string")
+        msg = "filter must be a string"
+        raise SecurityError(msg)
 
     value = value.strip()
 
     if len(value) > 1000:
-        raise SecurityError("filter expression too long: max 1000 characters")
+        msg = "filter expression too long: max 1000 characters"
+        raise SecurityError(msg)
 
     # Reject dangerous characters not part of filter DSL
     dangerous = [";", "--", "/*", "*/", "\\x", "\\0", "\n", "\r"]
     for d in dangerous:
         if d in value:
-            raise SecurityError(
-                f"filter expression contains disallowed characters: {d!r}"
-            )
+            msg = f"filter expression contains disallowed characters: {d!r}"
+            raise SecurityError(msg)
 
     return value
 
@@ -328,27 +336,30 @@ def validate_console_address(address: str) -> str:
     Prevents injection attacks in URL construction.
     """
     if not address or not isinstance(address, str):
-        raise SecurityError("Console address is required")
+        msg = "Console address is required"
+        raise SecurityError(msg)
 
     # Reject dangerous characters BEFORE stripping
     if any(c in address for c in ["\n", "\r", "\0", "'", '"', ";", "&", "|"]):
-        raise SecurityError("Console address contains invalid characters")
+        msg = "Console address contains invalid characters"
+        raise SecurityError(msg)
 
     address = address.strip()
 
     # Reject spaces (after strip)
     if " " in address:
-        raise SecurityError("Console address contains invalid characters")
+        msg = "Console address contains invalid characters"
+        raise SecurityError(msg)
 
     # Must look like an IP or hostname
     ip_pattern = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$")
     hostname_pattern = re.compile(
-        r"^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?"
-        r"(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$"
+        r"^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$"
     )
 
     if not ip_pattern.match(address) and not hostname_pattern.match(address):
-        raise SecurityError(f"Invalid console address format: {address}")
+        msg = f"Invalid console address format: {address}"
+        raise SecurityError(msg)
 
     return address
 
@@ -472,10 +483,8 @@ class RateLimiter:
     def check(self, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

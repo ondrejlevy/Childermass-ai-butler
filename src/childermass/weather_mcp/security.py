@@ -13,7 +13,6 @@ from threading import Lock
 from typing import Any
 
 
-
 # Configuration
 CONFIG_DIR = Path.home() / ".childermass"
 AUDIT_LOG_FILE = CONFIG_DIR / "weather-audit.log"
@@ -21,7 +20,6 @@ AUDIT_LOG_FILE = CONFIG_DIR / "weather-audit.log"
 
 class SecurityError(Exception):
     """Raised when security validation fails."""
-    pass
 
 
 # ============================================================================
@@ -31,213 +29,228 @@ class SecurityError(Exception):
 
 def validate_city_name(city: str, allow_digits: bool = False) -> str:
     """Validate and sanitize city name.
-    
+
     Args:
         city: City name, optionally with country code (e.g., "London,UK")
-        
+
     Returns:
         str: Sanitized city name.
-        
+
     Raises:
         SecurityError: If city name is invalid.
     """
     if not city or not isinstance(city, str):
-        raise SecurityError("City name must be a non-empty string")
-    
+        msg = "City name must be a non-empty string"
+        raise SecurityError(msg)
+
     city = city.strip()
-    
+
     if len(city) < 2:
-        raise SecurityError("City name too short (minimum 2 characters)")
-    
+        msg = "City name too short (minimum 2 characters)"
+        raise SecurityError(msg)
+
     if len(city) > 200:
-        raise SecurityError("City name too long (maximum 200 characters)")
-    
+        msg = "City name too long (maximum 200 characters)"
+        raise SecurityError(msg)
+
     # Allow letters, spaces, hyphens, commas, periods, apostrophes
     # Optionally allow digits when callers explicitly request it.
-    if allow_digits:
-        pattern = r"^[a-zA-Z0-9\s\-,.']+$"
-    else:
-        pattern = r"^[a-zA-Z\s\-,.']+$"
+    pattern = r"^[a-zA-Z0-9\s\-,.']+$" if allow_digits else r"^[a-zA-Z\s\-,.']+$"
 
     if not re.match(pattern, city):
-        raise SecurityError(
+        msg = (
             "City name contains invalid characters "
             "(only letters, spaces, hyphens, commas, periods, apostrophes allowed)"
         )
-    
+        raise SecurityError(msg)
+
     return city
 
 
 def validate_coordinates(lat: float, lon: float) -> tuple[float, float]:
     """Validate geographic coordinates.
-    
+
     Args:
         lat: Latitude (-90 to 90)
         lon: Longitude (-180 to 180)
-        
+
     Returns:
         tuple: (latitude, longitude)
-        
+
     Raises:
         SecurityError: If coordinates are invalid.
     """
     if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
-        raise SecurityError("Latitude and longitude must be numbers")
-    
+        msg = "Latitude and longitude must be numbers"
+        raise SecurityError(msg)
+
     if not -90 <= lat <= 90:
-        raise SecurityError(f"Invalid latitude: {lat} (must be between -90 and 90)")
-    
+        msg = f"Invalid latitude: {lat} (must be between -90 and 90)"
+        raise SecurityError(msg)
+
     if not -180 <= lon <= 180:
-        raise SecurityError(f"Invalid longitude: {lon} (must be between -180 and 180)")
-    
+        msg = f"Invalid longitude: {lon} (must be between -180 and 180)"
+        raise SecurityError(msg)
+
     return float(lat), float(lon)
 
 
 def validate_units(units: str) -> str:
     """Validate temperature units parameter.
-    
+
     Args:
         units: Temperature units ("metric", "imperial", or "standard")
-        
+
     Returns:
         str: Validated units string.
-        
+
     Raises:
         SecurityError: If units value is invalid.
     """
     valid_units = {"metric", "imperial", "standard"}
-    
+
     if not units or not isinstance(units, str):
-        raise SecurityError("Units must be a non-empty string")
-    
+        msg = "Units must be a non-empty string"
+        raise SecurityError(msg)
+
     units = units.lower().strip()
-    
+
     if units not in valid_units:
-        raise SecurityError(
-            f"Invalid units: {units} (must be one of: {', '.join(valid_units)})"
-        )
-    
+        msg = f"Invalid units: {units} (must be one of: {', '.join(valid_units)})"
+        raise SecurityError(msg)
+
     return units
 
 
 def validate_days(days: int, max_days: int = 5) -> int:
     """Validate number of forecast days.
-    
+
     Args:
         days: Number of days to forecast
         max_days: Maximum allowed days (default: 5 for OpenWeatherMap free tier)
-        
+
     Returns:
         int: Validated days count.
-        
+
     Raises:
         SecurityError: If days is invalid.
     """
     if not isinstance(days, int):
-        raise SecurityError("Days must be an integer")
-    
+        msg = "Days must be an integer"
+        raise SecurityError(msg)
+
     if days < 1:
-        raise SecurityError("Days must be at least 1")
-    
+        msg = "Days must be at least 1"
+        raise SecurityError(msg)
+
     if days > max_days:
-        raise SecurityError(f"Days cannot exceed {max_days} (API limitation)")
-    
+        msg = f"Days cannot exceed {max_days} (API limitation)"
+        raise SecurityError(msg)
+
     return days
 
 
 def validate_hours(hours: int, max_hours: int = 48) -> int:
     """Validate number of forecast hours.
-    
+
     Args:
         hours: Number of hours to forecast
         max_hours: Maximum allowed hours (default: 48)
-        
+
     Returns:
         int: Validated hours count.
-        
+
     Raises:
         SecurityError: If hours is invalid.
     """
     if not isinstance(hours, int):
-        raise SecurityError("Hours must be an integer")
-    
+        msg = "Hours must be an integer"
+        raise SecurityError(msg)
+
     if hours < 1:
-        raise SecurityError("Hours must be at least 1")
-    
+        msg = "Hours must be at least 1"
+        raise SecurityError(msg)
+
     if hours > max_hours:
-        raise SecurityError(f"Hours cannot exceed {max_hours}")
-    
+        msg = f"Hours cannot exceed {max_hours}"
+        raise SecurityError(msg)
+
     return hours
 
 
 def validate_activity(activity: str) -> str:
     """Validate activity name.
-    
+
     Args:
         activity: Activity name (e.g., "hiking", "running")
-        
+
     Returns:
         str: Sanitized activity name.
-        
+
     Raises:
         SecurityError: If activity is invalid.
     """
     if not activity or not isinstance(activity, str):
-        raise SecurityError("Activity must be a non-empty string")
-    
+        msg = "Activity must be a non-empty string"
+        raise SecurityError(msg)
+
     activity = activity.strip().lower()
-    
+
     if len(activity) < 2:
-        raise SecurityError("Activity name too short (minimum 2 characters)")
-    
+        msg = "Activity name too short (minimum 2 characters)"
+        raise SecurityError(msg)
+
     if len(activity) > 50:
-        raise SecurityError("Activity name too long (maximum 50 characters)")
-    
+        msg = "Activity name too long (maximum 50 characters)"
+        raise SecurityError(msg)
+
     # Allow letters, spaces, hyphens
     if not re.match(r"^[a-z\s\-]+$", activity):
-        raise SecurityError(
-            "Activity name contains invalid characters "
-            "(only letters, spaces, hyphens allowed)"
-        )
-    
+        msg = "Activity name contains invalid characters (only letters, spaces, hyphens allowed)"
+        raise SecurityError(msg)
+
     return activity
 
 
 def validate_date_string(date_str: str) -> str:
     """Validate date string format.
-    
+
     Args:
         date_str: Date in YYYY-MM-DD format
-        
+
     Returns:
         str: Validated date string.
-        
+
     Raises:
         SecurityError: If date format is invalid.
     """
     if not date_str or not isinstance(date_str, str):
-        raise SecurityError("Date must be a non-empty string")
-    
+        msg = "Date must be a non-empty string"
+        raise SecurityError(msg)
+
     date_str = date_str.strip()
-    
+
     # Validate format YYYY-MM-DD
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        raise SecurityError(
-            f"Invalid date format: {date_str} (expected YYYY-MM-DD)"
-        )
-    
+        msg = f"Invalid date format: {date_str} (expected YYYY-MM-DD)"
+        raise SecurityError(msg)
+
     # Validate actual date
     try:
         year, month, day = map(int, date_str.split("-"))
         if not (1900 <= year <= 2100):
-            raise SecurityError(f"Year out of range: {year}")
+            msg = f"Year out of range: {year}"
+            raise SecurityError(msg)
         if not (1 <= month <= 12):
-            raise SecurityError(f"Month out of range: {month}")
+            msg = f"Month out of range: {month}"
+            raise SecurityError(msg)
         if not (1 <= day <= 31):
-            raise SecurityError(f"Day out of range: {day}")
+            msg = f"Day out of range: {day}"
+            raise SecurityError(msg)
     except ValueError:
-        raise SecurityError(f"Invalid date: {date_str}")
-    
+        msg = f"Invalid date: {date_str}"
+        raise SecurityError(msg)
+
     return date_str
 
 
@@ -300,10 +313,8 @@ class RateLimiter:
             # Check if we have tokens available
             if bucket["tokens"] < 1.0:
                 wait_time = (1.0 - bucket["tokens"]) / (rate / 60.0)
-                raise SecurityError(
-                    f"Rate limit exceeded for {operation}. "
-                    f"Please wait {wait_time:.1f} seconds."
-                )
+                msg = f"Rate limit exceeded for {operation}. Please wait {wait_time:.1f} seconds."
+                raise SecurityError(msg)
 
             # Consume one token
             bucket["tokens"] -= 1.0
@@ -320,29 +331,29 @@ rate_limiter = RateLimiter()
 
 def sanitize_error_message(error: Exception) -> str:
     """Sanitize error message to prevent leaking sensitive information.
-    
+
     Args:
         error: Exception to sanitize
-        
+
     Returns:
         str: Sanitized error message.
     """
     message = str(error)
-    
+
     # Remove API keys (hex/alphanumeric sequences >= 24 chars)
-    message = re.sub(r'\b[0-9a-f]{24,}\b', '[API_KEY]', message, flags=re.IGNORECASE)
-    
+    message = re.sub(r"\b[0-9a-f]{24,}\b", "[API_KEY]", message, flags=re.IGNORECASE)
+
     # Remove file paths
-    message = re.sub(r'/[a-zA-Z0-9_\-./]+', '[PATH]', message)
-    message = re.sub(r'[A-Z]:\\[a-zA-Z0-9_\-\\]+', '[PATH]', message)
-    
+    message = re.sub(r"/[a-zA-Z0-9_\-./]+", "[PATH]", message)
+    message = re.sub(r"[A-Z]:\\[a-zA-Z0-9_\-\\]+", "[PATH]", message)
+
     # Remove URLs with API keys
-    message = re.sub(r'appid=[^&\s]+', 'appid=[API_KEY]', message, flags=re.IGNORECASE)
-    
+    message = re.sub(r"appid=[^&\s]+", "appid=[API_KEY]", message, flags=re.IGNORECASE)
+
     # Limit length
     if len(message) > 200:
         message = message[:197] + "..."
-    
+
     return message
 
 
@@ -411,16 +422,18 @@ def audit_log(
 # ============================================================================
 
 
-def validate_location(location: str | tuple[float, float]) -> tuple[str, str | None, float | None, float | None]:
+def validate_location(
+    location: str | tuple[float, float],
+) -> tuple[str, str | None, float | None, float | None]:
     """Validate location input (city name or coordinates).
-    
+
     Args:
         location: Either city name string or (lat, lon) tuple
-        
+
     Returns:
         tuple: (location_type, city_name, latitude, longitude)
                location_type is "city" or "coords"
-               
+
     Raises:
         SecurityError: If location is invalid.
     """
@@ -429,10 +442,8 @@ def validate_location(location: str | tuple[float, float]) -> tuple[str, str | N
         # city names that include digits so API queries can be performed.
         city = validate_city_name(location, allow_digits=True)
         return ("city", city, None, None)
-    elif isinstance(location, (tuple, list)) and len(location) == 2:
+    if isinstance(location, (tuple, list)) and len(location) == 2:
         lat, lon = validate_coordinates(location[0], location[1])
         return ("coords", None, lat, lon)
-    else:
-        raise SecurityError(
-            "Location must be either a city name string or (latitude, longitude) tuple"
-        )
+    msg = "Location must be either a city name string or (latitude, longitude) tuple"
+    raise SecurityError(msg)

@@ -12,27 +12,29 @@ from typing import Any
 
 # Configure environment BEFORE importing openmemory
 from .auth import configure_environment
-configure_environment()
 
-from .security import (  # noqa: E402
-    validate_memory_content,
-    validate_query,
-    validate_memory_id,
-    validate_tags,
-    validate_sector,
-    validate_category,
-    validate_limit,
-    validate_temporal_date,
-    validate_subject,
-    validate_predicate,
-    rate_limiter,
-    sanitize_error_message,
-    audit_log,
-)
+
+configure_environment()
 
 # Import OpenMemory SDK
 from openmemory.client import Memory  # noqa: E402
 from openmemory.core.db import db as om_db  # noqa: E402
+
+from .security import (  # noqa: E402
+    audit_log,
+    rate_limiter,
+    sanitize_error_message,
+    validate_category,
+    validate_limit,
+    validate_memory_content,
+    validate_memory_id,
+    validate_predicate,
+    validate_query,
+    validate_sector,
+    validate_subject,
+    validate_tags,
+    validate_temporal_date,
+)
 
 
 # Default user ID for the Childermass household
@@ -102,7 +104,7 @@ class MemoryClient:
         rate_limiter.check("store")
 
         # Add category as a tag for filtering
-        all_tags = [f"category:{category}"] + tags
+        all_tags = [f"category:{category}", *tags]
 
         result = await self.memory.add(
             content,
@@ -113,12 +115,15 @@ class MemoryClient:
 
         memory_id = result.get("id") or result.get("root_memory_id", "unknown")
 
-        audit_log("store", details={
-            "memory_id": memory_id,
-            "content_preview": content[:80],
-            "category": category,
-            "tags": tags,
-        })
+        audit_log(
+            "store",
+            details={
+                "memory_id": memory_id,
+                "content_preview": content[:80],
+                "category": category,
+                "tags": tags,
+            },
+        )
 
         return {
             "id": memory_id,
@@ -161,15 +166,17 @@ class MemoryClient:
             score = r.get("score", 0)
             if score < min_score:
                 continue
-            memories.append({
-                "id": r.get("id", ""),
-                "content": r.get("content", ""),
-                "sector": r.get("primary_sector", "unknown"),
-                "score": round(score, 3),
-                "tags": _parse_tags(r.get("tags")),
-                "created_at": _format_timestamp(r.get("created_at")),
-                "salience": round(r.get("salience", 0), 3),
-            })
+            memories.append(
+                {
+                    "id": r.get("id", ""),
+                    "content": r.get("content", ""),
+                    "sector": r.get("primary_sector", "unknown"),
+                    "score": round(score, 3),
+                    "tags": _parse_tags(r.get("tags")),
+                    "created_at": _format_timestamp(r.get("created_at")),
+                    "salience": round(r.get("salience", 0), 3),
+                }
+            )
 
         return {
             "memories": memories,
@@ -208,14 +215,16 @@ class MemoryClient:
 
         memories = []
         for r in results:
-            memories.append({
-                "id": r.get("id", ""),
-                "content": r.get("content", ""),
-                "sector": r.get("primary_sector", "unknown"),
-                "score": round(r.get("score", 0), 3),
-                "tags": _parse_tags(r.get("tags")),
-                "salience": round(r.get("salience", 0), 3),
-            })
+            memories.append(
+                {
+                    "id": r.get("id", ""),
+                    "content": r.get("content", ""),
+                    "sector": r.get("primary_sector", "unknown"),
+                    "score": round(r.get("score", 0), 3),
+                    "tags": _parse_tags(r.get("tags")),
+                    "salience": round(r.get("salience", 0), 3),
+                }
+            )
 
         return {
             "memories": memories,
@@ -312,14 +321,16 @@ class MemoryClient:
                     if meta.get("childermass_category") != category:
                         continue
 
-            memories.append({
-                "id": r.get("id", ""),
-                "content": r.get("content", ""),
-                "sector": r.get("primary_sector", "unknown"),
-                "tags": tags,
-                "score": round(r.get("score", 0), 3),
-                "salience": round(r.get("salience", 0), 3),
-            })
+            memories.append(
+                {
+                    "id": r.get("id", ""),
+                    "content": r.get("content", ""),
+                    "sector": r.get("primary_sector", "unknown"),
+                    "tags": tags,
+                    "score": round(r.get("score", 0), 3),
+                    "salience": round(r.get("salience", 0), 3),
+                }
+            )
 
         return {
             "memories": memories,
@@ -337,20 +348,23 @@ class MemoryClient:
             list: All memory records.
         """
         from openmemory.core.db import db as _db
+
         rows = _db.fetchall(
             "SELECT id, content, primary_sector, tags, salience, created_at FROM memories ORDER BY created_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         result = []
         for row in rows:
-            result.append({
-                "id": row[0],
-                "content": row[1],
-                "sector": row[2],
-                "tags": row[3],
-                "salience": row[4],
-                "created_at": row[5],
-            })
+            result.append(
+                {
+                    "id": row[0],
+                    "content": row[1],
+                    "sector": row[2],
+                    "tags": row[3],
+                    "salience": row[4],
+                    "created_at": row[5],
+                }
+            )
         return result
 
     async def forget(self, memory_id: str) -> dict[str, Any]:
@@ -417,12 +431,15 @@ class MemoryClient:
             (fact_id, subject, predicate, obj, valid_from, now),
         )
 
-        audit_log("store_fact", details={
-            "fact_id": fact_id,
-            "subject": subject,
-            "predicate": predicate,
-            "valid_from": valid_from,
-        })
+        audit_log(
+            "store_fact",
+            details={
+                "fact_id": fact_id,
+                "subject": subject,
+                "predicate": predicate,
+                "valid_from": valid_from,
+            },
+        )
 
         return {
             "fact_id": fact_id,
@@ -485,13 +502,16 @@ class MemoryClient:
             (fact_id, subject, predicate, new_object, valid_from, now),
         )
 
-        audit_log("update_fact", details={
-            "new_fact_id": fact_id,
-            "subject": subject,
-            "predicate": predicate,
-            "previous_value": old_value,
-            "valid_from": valid_from,
-        })
+        audit_log(
+            "update_fact",
+            details={
+                "new_fact_id": fact_id,
+                "subject": subject,
+                "predicate": predicate,
+                "previous_value": old_value,
+                "valid_from": valid_from,
+            },
+        )
 
         return {
             "fact_id": fact_id,
@@ -527,17 +547,19 @@ class MemoryClient:
         )
 
         timeline = []
-        for row in (rows or []):
-            timeline.append({
-                "id": row[0],
-                "subject": row[1],
-                "predicate": row[2],
-                "object": row[3],
-                "valid_from": row[4],
-                "valid_to": row[5],
-                "confidence": round(float(row[6]), 2),
-                "is_current": row[5] is None,
-            })
+        for row in rows or []:
+            timeline.append(
+                {
+                    "id": row[0],
+                    "subject": row[1],
+                    "predicate": row[2],
+                    "object": row[3],
+                    "valid_from": row[4],
+                    "valid_to": row[5],
+                    "confidence": round(float(row[6]), 2),
+                    "is_current": row[5] is None,
+                }
+            )
 
         return {
             "subject": subject,
@@ -556,23 +578,20 @@ class MemoryClient:
         try:
             # Count total memories
             row = om_db.fetchone(
-                "SELECT COUNT(*) FROM memories WHERE user_id = ?",
-                (DEFAULT_USER_ID,)
+                "SELECT COUNT(*) FROM memories WHERE user_id = ?", (DEFAULT_USER_ID,)
             )
             total = row[0] if row else 0
 
             # Count by sector
             sector_rows = om_db.fetchall(
                 "SELECT primary_sector, COUNT(*) FROM memories WHERE user_id = ? GROUP BY primary_sector",
-                (DEFAULT_USER_ID,)
+                (DEFAULT_USER_ID,),
             )
             sectors = {r[0]: r[1] for r in sector_rows} if sector_rows else {}
 
             # Count temporal facts
             try:
-                fact_row = om_db.fetchone(
-                    "SELECT COUNT(*) FROM childermass_temporal_facts", ()
-                )
+                fact_row = om_db.fetchone("SELECT COUNT(*) FROM childermass_temporal_facts", ())
                 temporal_count = fact_row[0] if fact_row else 0
             except Exception:
                 temporal_count = 0
@@ -580,16 +599,18 @@ class MemoryClient:
             # Recent memories
             recent_rows = om_db.fetchall(
                 "SELECT id, content, primary_sector, created_at FROM memories WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
-                (DEFAULT_USER_ID,)
+                (DEFAULT_USER_ID,),
             )
             recent = []
-            for r in (recent_rows or []):
-                recent.append({
-                    "id": r[0],
-                    "content": r[1][:100] + ("..." if len(r[1]) > 100 else ""),
-                    "sector": r[2],
-                    "created_at": _format_timestamp(r[3]),
-                })
+            for r in recent_rows or []:
+                recent.append(
+                    {
+                        "id": r[0],
+                        "content": r[1][:100] + ("..." if len(r[1]) > 100 else ""),
+                        "sector": r[2],
+                        "created_at": _format_timestamp(r[3]),
+                    }
+                )
 
             return {
                 "total_memories": total,

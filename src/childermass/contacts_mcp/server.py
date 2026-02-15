@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-contacts")
 
@@ -462,11 +463,7 @@ def contacts_add_to_group(
         Success confirmation with list of added contacts.
     """
     try:
-        names = [
-            n.strip()
-            for n in contact_resource_names.split(",")
-            if n.strip()
-        ]
+        names = [n.strip() for n in contact_resource_names.split(",") if n.strip()]
         return client.add_to_group(
             group_resource_name=group_resource_name,
             contact_resource_names=names,
@@ -495,11 +492,7 @@ def contacts_remove_from_group(
         Success confirmation with list of removed contacts.
     """
     try:
-        names = [
-            n.strip()
-            for n in contact_resource_names.split(",")
-            if n.strip()
-        ]
+        names = [n.strip() for n in contact_resource_names.split(",") if n.strip()]
         return client.remove_from_group(
             group_resource_name=group_resource_name,
             contact_resource_names=names,

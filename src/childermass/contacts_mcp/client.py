@@ -16,7 +16,7 @@ API reference: https://developers.google.com/people/api/rest
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from googleapiclient.discovery import Resource, build
 
@@ -43,6 +43,7 @@ from .security import (
     validate_search_query,
     validate_url,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class ContactOrganization:
 class Contact:
     """A contact person from Google People API."""
 
-    resource_name: str          # "people/c1234567890"
+    resource_name: str  # "people/c1234567890"
     etag: str = ""
     display_name: str = ""
     given_name: str = ""
@@ -110,8 +111,8 @@ class Contact:
     phones: list[ContactPhone] = field(default_factory=list)
     addresses: list[ContactAddress] = field(default_factory=list)
     organizations: list[ContactOrganization] = field(default_factory=list)
-    birthday: str = ""          # "YYYY-MM-DD" or "MM-DD"
-    notes: str = ""             # biography
+    birthday: str = ""  # "YYYY-MM-DD" or "MM-DD"
+    notes: str = ""  # biography
     photo_url: str = ""
     groups: list[str] = field(default_factory=list)  # group resourceNames
     urls: list[str] = field(default_factory=list)
@@ -124,10 +125,10 @@ class Contact:
 class ContactGroup:
     """A Google Contacts group."""
 
-    resource_name: str          # "contactGroups/abc123"
+    resource_name: str  # "contactGroups/abc123"
     name: str = ""
     member_count: int = 0
-    group_type: str = ""        # USER_CONTACT_GROUP or SYSTEM_CONTACT_GROUP
+    group_type: str = ""  # USER_CONTACT_GROUP or SYSTEM_CONTACT_GROUP
 
 
 # ---------------------------------------------------------------------------
@@ -144,11 +145,12 @@ def get_people_service(account: str | None = None) -> Resource:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Contacts accounts found. Run:\n"
                 "  python -m childermass.contacts_mcp.auth "
                 "--account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
         if account == "default":
             account = None
@@ -191,40 +193,48 @@ def _parse_person(person: dict) -> Contact:
     # Emails
     emails = []
     for e in person.get("emailAddresses", []):
-        emails.append(ContactEmail(
-            value=e.get("value", ""),
-            type=e.get("type", ""),
-        ))
+        emails.append(
+            ContactEmail(
+                value=e.get("value", ""),
+                type=e.get("type", ""),
+            )
+        )
 
     # Phones
     phones = []
     for p in person.get("phoneNumbers", []):
-        phones.append(ContactPhone(
-            value=p.get("value", ""),
-            type=p.get("type", ""),
-        ))
+        phones.append(
+            ContactPhone(
+                value=p.get("value", ""),
+                type=p.get("type", ""),
+            )
+        )
 
     # Addresses
     addresses = []
     for a in person.get("addresses", []):
-        addresses.append(ContactAddress(
-            formatted_value=a.get("formattedValue", ""),
-            type=a.get("type", ""),
-            street_address=a.get("streetAddress", ""),
-            city=a.get("city", ""),
-            region=a.get("region", ""),
-            postal_code=a.get("postalCode", ""),
-            country=a.get("country", ""),
-        ))
+        addresses.append(
+            ContactAddress(
+                formatted_value=a.get("formattedValue", ""),
+                type=a.get("type", ""),
+                street_address=a.get("streetAddress", ""),
+                city=a.get("city", ""),
+                region=a.get("region", ""),
+                postal_code=a.get("postalCode", ""),
+                country=a.get("country", ""),
+            )
+        )
 
     # Organizations
     organizations = []
     for o in person.get("organizations", []):
-        organizations.append(ContactOrganization(
-            name=o.get("name", ""),
-            title=o.get("title", ""),
-            department=o.get("department", ""),
-        ))
+        organizations.append(
+            ContactOrganization(
+                name=o.get("name", ""),
+                title=o.get("title", ""),
+                department=o.get("department", ""),
+            )
+        )
 
     # Birthday
     birthday = ""
@@ -255,7 +265,7 @@ def _parse_person(person: dict) -> Contact:
         if not photo.get("default", False):
             photo_url = photo.get("url", "")
 
-    # Groups (memberships)
+    # Extract Groups (memberships)
     groups = []
     for m in person.get("memberships", []):
         cgm = m.get("contactGroupMembership", {})
@@ -273,10 +283,12 @@ def _parse_person(person: dict) -> Contact:
     # Relations
     relations = []
     for r in person.get("relations", []):
-        relations.append({
-            "person": r.get("person", ""),
-            "type": r.get("type", ""),
-        })
+        relations.append(
+            {
+                "person": r.get("person", ""),
+                "type": r.get("type", ""),
+            }
+        )
 
     # Occupation
     occupation = ""
@@ -297,10 +309,12 @@ def _parse_person(person: dict) -> Contact:
             date_str = f"{year:04d}-{month:02d}-{day:02d}"
         elif month and day:
             date_str = f"{month:02d}-{day:02d}"
-        events.append({
-            "date": date_str,
-            "type": ev.get("type", ""),
-        })
+        events.append(
+            {
+                "date": date_str,
+                "type": ev.get("type", ""),
+            }
+        )
 
     # Etag
     etag = person.get("etag", "")
@@ -364,24 +378,20 @@ def _build_person_body(
 
     # Names (singleton)
     if given_name or family_name:
-        body["names"] = [{
-            "givenName": given_name,
-            "familyName": family_name,
-        }]
+        body["names"] = [
+            {
+                "givenName": given_name,
+                "familyName": family_name,
+            }
+        ]
 
     # Email addresses
     if emails:
-        body["emailAddresses"] = [
-            {"value": addr, "type": typ or "other"}
-            for addr, typ in emails
-        ]
+        body["emailAddresses"] = [{"value": addr, "type": typ or "other"} for addr, typ in emails]
 
     # Phone numbers
     if phones:
-        body["phoneNumbers"] = [
-            {"value": num, "type": typ or "other"}
-            for num, typ in phones
-        ]
+        body["phoneNumbers"] = [{"value": num, "type": typ or "other"} for num, typ in phones]
 
     # Organization
     if organization or job_title:
@@ -392,7 +402,7 @@ def _build_person_body(
             org["title"] = job_title
         body["organizations"] = [org]
 
-    # Birthday (singleton)
+    # Add Birthday (singleton)
     if birthday:
         date_obj: dict = {}
         parts = birthday.split("-")
@@ -410,15 +420,14 @@ def _build_person_body(
         if date_obj:
             body["birthdays"] = [{"date": date_obj}]
 
-    # Notes / biography (singleton)
+    # Add Notes / biography (singleton)
     if notes:
         body["biographies"] = [{"value": notes, "contentType": "TEXT_PLAIN"}]
 
     # Addresses
     if addresses:
         body["addresses"] = [
-            {"formattedValue": addr, "type": typ or "other"}
-            for addr, typ in addresses
+            {"formattedValue": addr, "type": typ or "other"} for addr, typ in addresses
         ]
 
     # URLs
@@ -479,7 +488,8 @@ def search_contacts(
     """
     query = validate_search_query(query)
     if not query:
-        raise SecurityError("Search query is required")
+        msg = "Search query is required"
+        raise SecurityError(msg)
     max_results = validate_max_results(max_results, limit=30)
 
     acct_key = account or "default"
@@ -490,11 +500,15 @@ def search_contacts(
 
     try:
         service = get_people_service(account)
-        result = service.people().searchContacts(
-            query=query,
-            readMask=DEFAULT_PERSON_FIELDS,
-            pageSize=max_results,
-        ).execute()
+        result = (
+            service.people()
+            .searchContacts(
+                query=query,
+                readMask=DEFAULT_PERSON_FIELDS,
+                pageSize=max_results,
+            )
+            .execute()
+        )
 
         contacts = []
         for item in result.get("results", []):
@@ -502,10 +516,14 @@ def search_contacts(
             if person:
                 contacts.append(_parse_person(person))
 
-        audit_log("search_contacts", acct_key, {
-            "query": query,
-            "count": len(contacts),
-        })
+        audit_log(
+            "search_contacts",
+            acct_key,
+            {
+                "query": query,
+                "count": len(contacts),
+            },
+        )
         return contacts
 
     except SecurityError:
@@ -537,10 +555,8 @@ def list_contacts(
         "LAST_NAME_ASCENDING",
     }
     if sort_order not in valid_sorts:
-        raise SecurityError(
-            f"Invalid sort order: {sort_order}. "
-            f"Must be one of: {', '.join(sorted(valid_sorts))}"
-        )
+        msg = f"Invalid sort order: {sort_order}. Must be one of: {', '.join(sorted(valid_sorts))}"
+        raise SecurityError(msg)
 
     acct_key = account or "default"
     rate_limiter.check(acct_key, "list")
@@ -561,12 +577,7 @@ def list_contacts(
             if page_token:
                 params["pageToken"] = page_token
 
-            result = (
-                service.people()
-                .connections()
-                .list(**params)
-                .execute()
-            )
+            result = service.people().connections().list(**params).execute()
 
             for person in result.get("connections", []):
                 contacts.append(_parse_person(person))
@@ -602,14 +613,22 @@ def get_contact(
 
     try:
         service = get_people_service(account)
-        person = service.people().get(
-            resourceName=resource_name,
-            personFields=DEFAULT_PERSON_FIELDS,
-        ).execute()
+        person = (
+            service.people()
+            .get(
+                resourceName=resource_name,
+                personFields=DEFAULT_PERSON_FIELDS,
+            )
+            .execute()
+        )
 
-        audit_log("get_contact", acct_key, {
-            "resource_name": resource_name,
-        })
+        audit_log(
+            "get_contact",
+            acct_key,
+            {
+                "resource_name": resource_name,
+            },
+        )
         return _parse_person(person)
 
     except SecurityError:
@@ -627,10 +646,14 @@ def get_my_profile(account: str | None = None) -> Contact:
 
     try:
         service = get_people_service(account)
-        person = service.people().get(
-            resourceName="people/me",
-            personFields=DEFAULT_PERSON_FIELDS,
-        ).execute()
+        person = (
+            service.people()
+            .get(
+                resourceName="people/me",
+                personFields=DEFAULT_PERSON_FIELDS,
+            )
+            .execute()
+        )
 
         audit_log("get_my_profile", acct_key)
         return _parse_person(person)
@@ -677,7 +700,8 @@ def find_contacts_by_organization(
     """
     organization = validate_organization(organization)
     if not organization:
-        raise SecurityError("Organization name is required")
+        msg = "Organization name is required"
+        raise SecurityError(msg)
 
     results = search_contacts(
         query=organization,
@@ -711,12 +735,13 @@ def find_birthday_upcoming(
         List of contacts with upcoming birthdays, sorted by date.
     """
     if days < 1 or days > 365:
-        raise SecurityError("days must be between 1 and 365")
+        msg = "days must be between 1 and 365"
+        raise SecurityError(msg)
 
     # Get all contacts with birthday info
     all_contacts = list_contacts(max_results=1000, account=account)
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     upcoming: list[tuple[int, Contact]] = []  # (days_until, contact)
 
     for contact in all_contacts:
@@ -754,10 +779,14 @@ def find_birthday_upcoming(
     # Sort by days until birthday
     upcoming.sort(key=lambda x: x[0])
 
-    audit_log("find_birthday_upcoming", account or "default", {
-        "days": days,
-        "count": len(upcoming),
-    })
+    audit_log(
+        "find_birthday_upcoming",
+        account or "default",
+        {
+            "days": days,
+            "count": len(upcoming),
+        },
+    )
 
     return [contact for _, contact in upcoming]
 
@@ -839,17 +868,25 @@ def create_contact(
             urls=urls,
         )
 
-        person = service.people().createContact(
-            body=body,
-            personFields=DEFAULT_PERSON_FIELDS,
-        ).execute()
+        person = (
+            service.people()
+            .createContact(
+                body=body,
+                personFields=DEFAULT_PERSON_FIELDS,
+            )
+            .execute()
+        )
 
         contact = _parse_person(person)
 
-        audit_log("create_contact", acct_key, {
-            "resource_name": contact.resource_name,
-            "name": f"{given_name} {family_name}".strip(),
-        })
+        audit_log(
+            "create_contact",
+            acct_key,
+            {
+                "resource_name": contact.resource_name,
+                "name": f"{given_name} {family_name}".strip(),
+            },
+        )
 
         return contact
 
@@ -966,23 +1003,30 @@ def update_contact(
             update_fields.append("urls")
 
         if not update_fields:
-            raise SecurityError(
-                "At least one field must be specified for update"
-            )
+            msg = "At least one field must be specified for update"
+            raise SecurityError(msg)
 
-        person = service.people().updateContact(
-            resourceName=resource_name,
-            body=body,
-            updatePersonFields=",".join(update_fields),
-            personFields=DEFAULT_PERSON_FIELDS,
-        ).execute()
+        person = (
+            service.people()
+            .updateContact(
+                resourceName=resource_name,
+                body=body,
+                updatePersonFields=",".join(update_fields),
+                personFields=DEFAULT_PERSON_FIELDS,
+            )
+            .execute()
+        )
 
         contact = _parse_person(person)
 
-        audit_log("update_contact", acct_key, {
-            "resource_name": resource_name,
-            "updated_fields": update_fields,
-        })
+        audit_log(
+            "update_contact",
+            acct_key,
+            {
+                "resource_name": resource_name,
+                "updated_fields": update_fields,
+            },
+        )
 
         return contact
 
@@ -1019,9 +1063,13 @@ def delete_contact(
             resourceName=resource_name,
         ).execute()
 
-        audit_log("delete_contact", acct_key, {
-            "resource_name": resource_name,
-        })
+        audit_log(
+            "delete_contact",
+            acct_key,
+            {
+                "resource_name": resource_name,
+            },
+        )
 
         return {
             "success": True,
@@ -1061,11 +1109,7 @@ def list_contact_groups(
             if page_token:
                 params["pageToken"] = page_token
 
-            result = (
-                service.contactGroups()
-                .list(**params)
-                .execute()
-            )
+            result = service.contactGroups().list(**params).execute()
 
             for group in result.get("contactGroups", []):
                 groups.append(_parse_contact_group(group))
@@ -1074,9 +1118,13 @@ def list_contact_groups(
             if not page_token:
                 break
 
-        audit_log("list_contact_groups", acct_key, {
-            "count": len(groups),
-        })
+        audit_log(
+            "list_contact_groups",
+            acct_key,
+            {
+                "count": len(groups),
+            },
+        )
         return groups
 
     except SecurityError:
@@ -1105,14 +1153,22 @@ def get_contact_group(
 
     try:
         service = get_people_service(account)
-        group = service.contactGroups().get(
-            resourceName=resource_name,
-            maxMembers=max_members,
-        ).execute()
+        group = (
+            service.contactGroups()
+            .get(
+                resourceName=resource_name,
+                maxMembers=max_members,
+            )
+            .execute()
+        )
 
-        audit_log("get_contact_group", acct_key, {
-            "resource_name": resource_name,
-        })
+        audit_log(
+            "get_contact_group",
+            acct_key,
+            {
+                "resource_name": resource_name,
+            },
+        )
         return _parse_contact_group(group)
 
     except SecurityError:
@@ -1139,14 +1195,22 @@ def create_contact_group(
 
     try:
         service = get_people_service(account)
-        group = service.contactGroups().create(
-            body={"contactGroup": {"name": name}},
-        ).execute()
+        group = (
+            service.contactGroups()
+            .create(
+                body={"contactGroup": {"name": name}},
+            )
+            .execute()
+        )
 
-        audit_log("create_contact_group", acct_key, {
-            "name": name,
-            "resource_name": group.get("resourceName", ""),
-        })
+        audit_log(
+            "create_contact_group",
+            acct_key,
+            {
+                "name": name,
+                "resource_name": group.get("resourceName", ""),
+            },
+        )
         return _parse_contact_group(group)
 
     except SecurityError:
@@ -1169,9 +1233,7 @@ def add_to_group(
         account: Optional account email
     """
     group_resource_name = validate_group_resource_name(group_resource_name)
-    contact_resource_names = [
-        validate_resource_name(rn) for rn in contact_resource_names
-    ]
+    contact_resource_names = [validate_resource_name(rn) for rn in contact_resource_names]
 
     acct_key = account or "default"
     rate_limiter.check(acct_key, "modify_group_members")
@@ -1185,10 +1247,14 @@ def add_to_group(
             },
         ).execute()
 
-        audit_log("add_to_group", acct_key, {
-            "group": group_resource_name,
-            "contacts_added": len(contact_resource_names),
-        })
+        audit_log(
+            "add_to_group",
+            acct_key,
+            {
+                "group": group_resource_name,
+                "contacts_added": len(contact_resource_names),
+            },
+        )
 
         return {
             "success": True,
@@ -1216,9 +1282,7 @@ def remove_from_group(
         account: Optional account email
     """
     group_resource_name = validate_group_resource_name(group_resource_name)
-    contact_resource_names = [
-        validate_resource_name(rn) for rn in contact_resource_names
-    ]
+    contact_resource_names = [validate_resource_name(rn) for rn in contact_resource_names]
 
     acct_key = account or "default"
     rate_limiter.check(acct_key, "modify_group_members")
@@ -1232,10 +1296,14 @@ def remove_from_group(
             },
         ).execute()
 
-        audit_log("remove_from_group", acct_key, {
-            "group": group_resource_name,
-            "contacts_removed": len(contact_resource_names),
-        })
+        audit_log(
+            "remove_from_group",
+            acct_key,
+            {
+                "group": group_resource_name,
+                "contacts_removed": len(contact_resource_names),
+            },
+        )
 
         return {
             "success": True,

@@ -18,12 +18,12 @@ from unittest.mock import patch
 import pytest
 
 from childermass.protect_mcp.security import (
+    DEFAULT_SNAPSHOT_HEIGHT,
+    DEFAULT_SNAPSHOT_WIDTH,
     MAX_EVENT_RANGE_MS,
     MAX_EVENTS_PER_QUERY,
     MAX_SNAPSHOT_DIM,
     MIN_SNAPSHOT_DIM,
-    DEFAULT_SNAPSHOT_WIDTH,
-    DEFAULT_SNAPSHOT_HEIGHT,
     RateLimiter,
     SecurityError,
     audit_log,
@@ -422,7 +422,7 @@ class TestRateLimiter:
 
     def test_allows_up_to_capacity(self):
         limiter = RateLimiter()
-        for i in range(10):  # snapshot capacity is 10
+        for _i in range(10):  # snapshot capacity is 10
             assert limiter.allow("snapshot") is True
 
     def test_rejects_over_capacity(self):
@@ -473,10 +473,13 @@ class TestAuditLog:
         """Test that audit_log writes valid JSON entries."""
         log_file = tmp_path / "test-audit.log"
 
-        with patch("childermass.protect_mcp.security._AUDIT_LOG_FILE", log_file), \
-             patch("childermass.protect_mcp.security._AUDIT_DIR", tmp_path):
+        with (
+            patch("childermass.protect_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.protect_mcp.security._AUDIT_DIR", tmp_path),
+        ):
             # Reset logger to pick up new path
             import logging
+
             logger_name = "childermass.protect_mcp.audit"
             logger = logging.getLogger(logger_name)
             logger.handlers.clear()
@@ -494,9 +497,12 @@ class TestAuditLog:
         """Test failure audit log."""
         log_file = tmp_path / "test-audit.log"
 
-        with patch("childermass.protect_mcp.security._AUDIT_LOG_FILE", log_file), \
-             patch("childermass.protect_mcp.security._AUDIT_DIR", tmp_path):
+        with (
+            patch("childermass.protect_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.protect_mcp.security._AUDIT_DIR", tmp_path),
+        ):
             import logging
+
             logger = logging.getLogger("childermass.protect_mcp.audit")
             logger.handlers.clear()
 
@@ -528,21 +534,22 @@ class TestAuthConfig:
         """Loading config with no file returns None."""
         from childermass.protect_mcp.auth import load_config
 
-        with patch("childermass.protect_mcp.auth.get_config_path",
-                   return_value=tmp_path / "nonexistent.json"):
+        with patch(
+            "childermass.protect_mcp.auth.get_config_path",
+            return_value=tmp_path / "nonexistent.json",
+        ):
             assert load_config() is None
 
     def test_save_and_load_config(self, tmp_path):
         """Round-trip save and load of config."""
-        from childermass.protect_mcp.auth import save_config, load_config
+        from childermass.protect_mcp.auth import load_config, save_config
 
         config_file = tmp_path / "protect-config.json"
 
-        with patch("childermass.protect_mcp.auth.get_config_path",
-                   return_value=config_file), \
-             patch("childermass.protect_mcp.auth._is_keyring_available",
-                   return_value=False):
-
+        with (
+            patch("childermass.protect_mcp.auth.get_config_path", return_value=config_file),
+            patch("childermass.protect_mcp.auth._is_keyring_available", return_value=False),
+        ):
             save_config(
                 host="192.168.1.100",
                 username="admin",

@@ -16,10 +16,10 @@ API reference: https://developer.ui.com/network/v10.1.84/
 
 import logging
 import time
-import urllib3
 from dataclasses import dataclass
 
 import httpx
+import urllib3
 
 from .auth import get_console_url, get_credentials, get_site_id, load_config, verify_ssl
 from .security import (
@@ -40,6 +40,7 @@ from .security import (
     validate_voucher_params,
     validate_zone_id,
 )
+
 
 # Suppress InsecureRequestWarning for self-signed console certs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -161,10 +162,11 @@ class _NetworkSession:
         if self._client is None:
             config = load_config()
             if config is None:
-                raise RuntimeError(
+                msg = (
                     "Console not configured. Run setup first:\n"
                     "  python -m childermass.network_mcp.auth --setup"
                 )
+                raise RuntimeError(msg)
 
             self._base_url = get_console_url(config)
             ssl = verify_ssl(config)
@@ -188,9 +190,8 @@ class _NetworkSession:
             resp = client.get(self._base_url)
             self._csrf_token = resp.headers.get("x-csrf-token", "")
         except httpx.ConnectError:
-            raise RuntimeError(
-                "Cannot connect to console. Check that it is reachable."
-            )
+            msg = "Cannot connect to console. Check that it is reachable."
+            raise RuntimeError(msg)
 
         # Step 2: Login
         login_resp = client.post(
@@ -205,13 +206,11 @@ class _NetworkSession:
         )
 
         if login_resp.status_code == 401:
-            raise SecurityError(
-                "Console authentication failed – invalid username or password"
-            )
-        elif login_resp.status_code != 200:
-            raise RuntimeError(
-                f"Console login failed with HTTP {login_resp.status_code}"
-            )
+            msg = "Console authentication failed – invalid username or password"
+            raise SecurityError(msg)
+        if login_resp.status_code != 200:
+            msg = f"Console login failed with HTTP {login_resp.status_code}"
+            raise RuntimeError(msg)
 
         # Step 3: Extract updated CSRF token
         self._csrf_token = login_resp.headers.get(
@@ -312,10 +311,11 @@ def _resolve_site_id(site_id: str | None) -> str:
     if config_site:
         return validate_site_id(config_site)
 
-    raise SecurityError(
+    msg = (
         "site_id is required. Either pass it explicitly or configure "
         "a default via: python -m childermass.network_mcp.auth --setup"
     )
+    raise SecurityError(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +329,8 @@ def get_app_info() -> NetworkInfo:
 
     data = _session.get_json(f"{_API_PREFIX}/info")
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected info response format")
+        msg = "Unexpected info response format"
+        raise RuntimeError(msg)
 
     info = NetworkInfo(
         version=data.get("version", "unknown"),
@@ -391,14 +392,18 @@ def list_networks(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected networks response format")
+        msg = "Unexpected networks response format"
+        raise RuntimeError(msg)
 
     networks = [_parse_network(n) for n in data.get("data", [])]
 
-    audit_log("list_networks", details={
-        "site_id": sid,
-        "count": len(networks),
-    })
+    audit_log(
+        "list_networks",
+        details={
+            "site_id": sid,
+            "count": len(networks),
+        },
+    )
 
     return networks
 
@@ -418,15 +423,19 @@ def get_network(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected network response format")
+        msg = "Unexpected network response format"
+        raise RuntimeError(msg)
 
     network = _parse_network(data)
 
-    audit_log("get_network", details={
-        "site_id": sid,
-        "network_id": network_id,
-        "name": network.name,
-    })
+    audit_log(
+        "get_network",
+        details={
+            "site_id": sid,
+            "network_id": network_id,
+            "name": network.name,
+        },
+    )
 
     return network
 
@@ -461,10 +470,13 @@ def get_network_references(
         references=data.get("data", []) if isinstance(data.get("data"), list) else [],
     )
 
-    audit_log("get_network_references", details={
-        "site_id": sid,
-        "network_id": network_id,
-    })
+    audit_log(
+        "get_network_references",
+        details={
+            "site_id": sid,
+            "network_id": network_id,
+        },
+    )
 
     return ref
 
@@ -504,12 +516,15 @@ def create_network(
 
     network = _parse_network(data)
 
-    audit_log("create_network", details={
-        "site_id": sid,
-        "name": name,
-        "vlan_id": vlan_id,
-        "network_id": network.id,
-    })
+    audit_log(
+        "create_network",
+        details={
+            "site_id": sid,
+            "name": name,
+            "vlan_id": vlan_id,
+            "network_id": network.id,
+        },
+    )
 
     return network
 
@@ -541,7 +556,8 @@ def update_network(
         f"{_API_PREFIX}/sites/{sid}/networks/{network_id}",
     )
     if not isinstance(current, dict):
-        raise RuntimeError("Unexpected network response format")
+        msg = "Unexpected network response format"
+        raise RuntimeError(msg)
 
     # Apply updates
     if name is not None:
@@ -560,15 +576,18 @@ def update_network(
 
     network = _parse_network(data)
 
-    audit_log("update_network", details={
-        "site_id": sid,
-        "network_id": network_id,
-        "updates": {
-            k: v for k, v in {
-                "name": name, "vlan_id": vlan_id, "enabled": enabled
-            }.items() if v is not None
+    audit_log(
+        "update_network",
+        details={
+            "site_id": sid,
+            "network_id": network_id,
+            "updates": {
+                k: v
+                for k, v in {"name": name, "vlan_id": vlan_id, "enabled": enabled}.items()
+                if v is not None
+            },
         },
-    })
+    )
 
     return network
 
@@ -601,11 +620,14 @@ def delete_network(
     )
     resp.raise_for_status()
 
-    audit_log("delete_network", details={
-        "site_id": sid,
-        "network_id": network_id,
-        "force": force,
-    })
+    audit_log(
+        "delete_network",
+        details={
+            "site_id": sid,
+            "network_id": network_id,
+            "force": force,
+        },
+    )
 
     return True
 
@@ -672,14 +694,18 @@ def list_firewall_policies(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected firewall policies response format")
+        msg = "Unexpected firewall policies response format"
+        raise RuntimeError(msg)
 
     policies = [_parse_policy(p) for p in data.get("data", [])]
 
-    audit_log("list_firewall_policies", details={
-        "site_id": sid,
-        "count": len(policies),
-    })
+    audit_log(
+        "list_firewall_policies",
+        details={
+            "site_id": sid,
+            "count": len(policies),
+        },
+    )
 
     return policies
 
@@ -699,15 +725,19 @@ def get_firewall_policy(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected policy response format")
+        msg = "Unexpected policy response format"
+        raise RuntimeError(msg)
 
     policy = _parse_policy(data)
 
-    audit_log("get_firewall_policy", details={
-        "site_id": sid,
-        "policy_id": policy_id,
-        "name": policy.name,
-    })
+    audit_log(
+        "get_firewall_policy",
+        details={
+            "site_id": sid,
+            "policy_id": policy_id,
+            "name": policy.name,
+        },
+    )
 
     return policy
 
@@ -766,12 +796,15 @@ def create_firewall_policy(
 
     policy = _parse_policy(data)
 
-    audit_log("create_firewall_policy", details={
-        "site_id": sid,
-        "name": name,
-        "action": action,
-        "policy_id": policy.id,
-    })
+    audit_log(
+        "create_firewall_policy",
+        details={
+            "site_id": sid,
+            "name": name,
+            "action": action,
+            "policy_id": policy.id,
+        },
+    )
 
     return policy
 
@@ -805,7 +838,8 @@ def update_firewall_policy(
         f"{_API_PREFIX}/sites/{sid}/firewall/policies/{policy_id}",
     )
     if not isinstance(current, dict):
-        raise RuntimeError("Unexpected policy response format")
+        msg = "Unexpected policy response format"
+        raise RuntimeError(msg)
 
     # Apply updates
     if name is not None:
@@ -828,16 +862,23 @@ def update_firewall_policy(
 
     policy = _parse_policy(data)
 
-    audit_log("update_firewall_policy", details={
-        "site_id": sid,
-        "policy_id": policy_id,
-        "updates": {
-            k: v for k, v in {
-                "name": name, "enabled": enabled,
-                "action": action, "logging": logging_enabled,
-            }.items() if v is not None
+    audit_log(
+        "update_firewall_policy",
+        details={
+            "site_id": sid,
+            "policy_id": policy_id,
+            "updates": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "enabled": enabled,
+                    "action": action,
+                    "logging": logging_enabled,
+                }.items()
+                if v is not None
+            },
         },
-    })
+    )
 
     return policy
 
@@ -857,10 +898,13 @@ def delete_firewall_policy(
     )
     resp.raise_for_status()
 
-    audit_log("delete_firewall_policy", details={
-        "site_id": sid,
-        "policy_id": policy_id,
-    })
+    audit_log(
+        "delete_firewall_policy",
+        details={
+            "site_id": sid,
+            "policy_id": policy_id,
+        },
+    )
 
     return True
 
@@ -878,7 +922,8 @@ def get_policy_ordering(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected ordering response format")
+        msg = "Unexpected ordering response format"
+        raise RuntimeError(msg)
 
     ordering = PolicyOrdering(
         policy_ids=data.get("data", []),
@@ -913,10 +958,13 @@ def set_policy_ordering(
     )
     resp.raise_for_status()
 
-    audit_log("set_policy_ordering", details={
-        "site_id": sid,
-        "count": len(validated_ids),
-    })
+    audit_log(
+        "set_policy_ordering",
+        details={
+            "site_id": sid,
+            "count": len(validated_ids),
+        },
+    )
 
     return True
 
@@ -947,14 +995,18 @@ def list_firewall_zones(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected zones response format")
+        msg = "Unexpected zones response format"
+        raise RuntimeError(msg)
 
     zones = [_parse_zone(z) for z in data.get("data", [])]
 
-    audit_log("list_firewall_zones", details={
-        "site_id": sid,
-        "count": len(zones),
-    })
+    audit_log(
+        "list_firewall_zones",
+        details={
+            "site_id": sid,
+            "count": len(zones),
+        },
+    )
 
     return zones
 
@@ -974,15 +1026,19 @@ def get_firewall_zone(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected zone response format")
+        msg = "Unexpected zone response format"
+        raise RuntimeError(msg)
 
     zone = _parse_zone(data)
 
-    audit_log("get_firewall_zone", details={
-        "site_id": sid,
-        "zone_id": zone_id,
-        "name": zone.name,
-    })
+    audit_log(
+        "get_firewall_zone",
+        details={
+            "site_id": sid,
+            "zone_id": zone_id,
+            "name": zone.name,
+        },
+    )
 
     return zone
 
@@ -1006,11 +1062,14 @@ def create_firewall_zone(
 
     zone = _parse_zone(data)
 
-    audit_log("create_firewall_zone", details={
-        "site_id": sid,
-        "name": name,
-        "zone_id": zone.id,
-    })
+    audit_log(
+        "create_firewall_zone",
+        details={
+            "site_id": sid,
+            "name": name,
+            "zone_id": zone.id,
+        },
+    )
 
     return zone
 
@@ -1036,11 +1095,14 @@ def update_firewall_zone(
 
     zone = _parse_zone(data)
 
-    audit_log("update_firewall_zone", details={
-        "site_id": sid,
-        "zone_id": zone_id,
-        "name": name,
-    })
+    audit_log(
+        "update_firewall_zone",
+        details={
+            "site_id": sid,
+            "zone_id": zone_id,
+            "name": name,
+        },
+    )
 
     return zone
 
@@ -1060,10 +1122,13 @@ def delete_firewall_zone(
     )
     resp.raise_for_status()
 
-    audit_log("delete_firewall_zone", details={
-        "site_id": sid,
-        "zone_id": zone_id,
-    })
+    audit_log(
+        "delete_firewall_zone",
+        details={
+            "site_id": sid,
+            "zone_id": zone_id,
+        },
+    )
 
     return True
 
@@ -1124,14 +1189,18 @@ def list_vouchers(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected vouchers response format")
+        msg = "Unexpected vouchers response format"
+        raise RuntimeError(msg)
 
     vouchers = [_parse_voucher(v) for v in data.get("data", [])]
 
-    audit_log("list_vouchers", details={
-        "site_id": sid,
-        "count": len(vouchers),
-    })
+    audit_log(
+        "list_vouchers",
+        details={
+            "site_id": sid,
+            "count": len(vouchers),
+        },
+    )
 
     return vouchers
 
@@ -1151,14 +1220,18 @@ def get_voucher(
     )
 
     if not isinstance(data, dict):
-        raise RuntimeError("Unexpected voucher response format")
+        msg = "Unexpected voucher response format"
+        raise RuntimeError(msg)
 
     voucher = _parse_voucher(data)
 
-    audit_log("get_voucher", details={
-        "site_id": sid,
-        "voucher_id": voucher_id,
-    })
+    audit_log(
+        "get_voucher",
+        details={
+            "site_id": sid,
+            "voucher_id": voucher_id,
+        },
+    )
 
     return voucher
 
@@ -1220,11 +1293,14 @@ def generate_vouchers(
 
     vouchers = [_parse_voucher(v) for v in raw_vouchers]
 
-    audit_log("generate_vouchers", details={
-        "site_id": sid,
-        "count": len(vouchers),
-        "name": name,
-    })
+    audit_log(
+        "generate_vouchers",
+        details={
+            "site_id": sid,
+            "count": len(vouchers),
+            "name": name,
+        },
+    )
 
     return vouchers
 
@@ -1244,10 +1320,13 @@ def delete_voucher(
     )
     resp.raise_for_status()
 
-    audit_log("delete_voucher", details={
-        "site_id": sid,
-        "voucher_id": voucher_id,
-    })
+    audit_log(
+        "delete_voucher",
+        details={
+            "site_id": sid,
+            "voucher_id": voucher_id,
+        },
+    )
 
     return True
 
@@ -1278,10 +1357,13 @@ def delete_vouchers_bulk(
     )
     resp.raise_for_status()
 
-    audit_log("delete_vouchers_bulk", details={
-        "site_id": sid,
-        "filter": filter_expr,
-    })
+    audit_log(
+        "delete_vouchers_bulk",
+        details={
+            "site_id": sid,
+            "filter": filter_expr,
+        },
+    )
 
     return True
 

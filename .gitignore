@@ -40,10 +40,21 @@ build/
 venv/
 .venv/
 
-# ---- Testing ----
+# ---- Testing & Coverage ----
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+htmlcov-combined/
+coverage.xml
+junit.xml
+.tox/
+
+# ---- Linting & Type Checking ----
+.mypy_cache/
+.ruff_cache/
+.bandit
+bandit-report.json
 
 # ---- IDE ----
 .vscode/

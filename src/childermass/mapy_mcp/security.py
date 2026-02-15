@@ -4,6 +4,7 @@ This module provides input validation, rate limiting, error sanitization,
 and audit logging for the Mapy.com MCP server.
 """
 
+import contextlib
 import json
 import logging
 import re
@@ -20,7 +21,6 @@ AUDIT_LOG_FILE = CONFIG_DIR / "mapy-audit.log"
 
 class SecurityError(Exception):
     """Raised when security validation fails."""
-    pass
 
 
 # ============================================================================
@@ -28,9 +28,35 @@ class SecurityError(Exception):
 # ============================================================================
 
 SUPPORTED_LANGUAGES = {
-    "cs", "sk", "en", "de", "pl", "fr", "it", "es", "pt", "nl",
-    "ru", "uk", "hu", "ro", "bg", "hr", "sl", "sr", "da", "fi",
-    "no", "sv", "el", "tr", "ja", "zh", "ko", "ar", "he",
+    "cs",
+    "sk",
+    "en",
+    "de",
+    "pl",
+    "fr",
+    "it",
+    "es",
+    "pt",
+    "nl",
+    "ru",
+    "uk",
+    "hu",
+    "ro",
+    "bg",
+    "hr",
+    "sl",
+    "sr",
+    "da",
+    "fi",
+    "no",
+    "sv",
+    "el",
+    "tr",
+    "ja",
+    "zh",
+    "ko",
+    "ar",
+    "he",
 }
 
 SUPPORTED_ROUTE_TYPES = {
@@ -76,19 +102,23 @@ def validate_query(query: str) -> str:
         SecurityError: If query is invalid.
     """
     if not query or not isinstance(query, str):
-        raise SecurityError("Query must be a non-empty string")
+        msg = "Query must be a non-empty string"
+        raise SecurityError(msg)
 
     query = query.strip()
 
     if len(query) < 1:
-        raise SecurityError("Query must not be empty")
+        msg = "Query must not be empty"
+        raise SecurityError(msg)
 
     if len(query) > 500:
-        raise SecurityError("Query too long (maximum 500 characters)")
+        msg = "Query too long (maximum 500 characters)"
+        raise SecurityError(msg)
 
     # Reject control characters
     if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", query):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     return query
 
@@ -107,13 +137,16 @@ def validate_coordinates(lat: float, lon: float) -> tuple[float, float]:
         SecurityError: If coordinates are invalid.
     """
     if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
-        raise SecurityError("Latitude and longitude must be numbers")
+        msg = "Latitude and longitude must be numbers"
+        raise SecurityError(msg)
 
     if not -90 <= lat <= 90:
-        raise SecurityError(f"Invalid latitude: {lat} (must be between -90 and 90)")
+        msg = f"Invalid latitude: {lat} (must be between -90 and 90)"
+        raise SecurityError(msg)
 
     if not -180 <= lon <= 180:
-        raise SecurityError(f"Invalid longitude: {lon} (must be between -180 and 180)")
+        msg = f"Invalid longitude: {lon} (must be between -180 and 180)"
+        raise SecurityError(msg)
 
     return float(lat), float(lon)
 
@@ -131,15 +164,14 @@ def validate_language(lang: str) -> str:
         SecurityError: If language code is invalid.
     """
     if not lang or not isinstance(lang, str):
-        raise SecurityError("Language must be a non-empty string")
+        msg = "Language must be a non-empty string"
+        raise SecurityError(msg)
 
     lang = lang.strip().lower()
 
     if lang not in SUPPORTED_LANGUAGES:
-        raise SecurityError(
-            f"Unsupported language: {lang} "
-            f"(supported: {', '.join(sorted(SUPPORTED_LANGUAGES))})"
-        )
+        msg = f"Unsupported language: {lang} (supported: {', '.join(sorted(SUPPORTED_LANGUAGES))})"
+        raise SecurityError(msg)
 
     return lang
 
@@ -157,15 +189,17 @@ def validate_route_type(route_type: str) -> str:
         SecurityError: If route type is invalid.
     """
     if not route_type or not isinstance(route_type, str):
-        raise SecurityError("Route type must be a non-empty string")
+        msg = "Route type must be a non-empty string"
+        raise SecurityError(msg)
 
     route_type = route_type.strip().lower()
 
     if route_type not in SUPPORTED_ROUTE_TYPES:
-        raise SecurityError(
+        msg = (
             f"Invalid route type: {route_type} "
             f"(must be one of: {', '.join(sorted(SUPPORTED_ROUTE_TYPES))})"
         )
+        raise SecurityError(msg)
 
     return route_type
 
@@ -183,15 +217,17 @@ def validate_geocode_type(geocode_type: str) -> str:
         SecurityError: If geocode type is invalid.
     """
     if not geocode_type or not isinstance(geocode_type, str):
-        raise SecurityError("Geocode type must be a non-empty string")
+        msg = "Geocode type must be a non-empty string"
+        raise SecurityError(msg)
 
     geocode_type = geocode_type.strip().lower()
 
     if geocode_type not in SUPPORTED_GEOCODE_TYPES:
-        raise SecurityError(
+        msg = (
             f"Invalid geocode type: {geocode_type} "
             f"(must be one of: {', '.join(sorted(SUPPORTED_GEOCODE_TYPES))})"
         )
+        raise SecurityError(msg)
 
     return geocode_type
 
@@ -210,13 +246,16 @@ def validate_limit(limit: int, max_limit: int = 100) -> int:
         SecurityError: If limit is invalid.
     """
     if not isinstance(limit, int):
-        raise SecurityError("Limit must be an integer")
+        msg = "Limit must be an integer"
+        raise SecurityError(msg)
 
     if limit < 1:
-        raise SecurityError("Limit must be at least 1")
+        msg = "Limit must be at least 1"
+        raise SecurityError(msg)
 
     if limit > max_limit:
-        raise SecurityError(f"Limit cannot exceed {max_limit}")
+        msg = f"Limit cannot exceed {max_limit}"
+        raise SecurityError(msg)
 
     return limit
 
@@ -234,15 +273,18 @@ def validate_waypoints(waypoints: list[tuple[float, float]]) -> list[tuple[float
         SecurityError: If waypoints are invalid.
     """
     if not isinstance(waypoints, (list, tuple)):
-        raise SecurityError("Waypoints must be a list of coordinate pairs")
+        msg = "Waypoints must be a list of coordinate pairs"
+        raise SecurityError(msg)
 
     if len(waypoints) > 15:
-        raise SecurityError("Maximum 15 waypoints allowed")
+        msg = "Maximum 15 waypoints allowed"
+        raise SecurityError(msg)
 
     validated = []
     for i, wp in enumerate(waypoints):
         if not isinstance(wp, (list, tuple)) or len(wp) != 2:
-            raise SecurityError(f"Waypoint {i} must be a [lat, lon] pair")
+            msg = f"Waypoint {i} must be a [lat, lon] pair"
+            raise SecurityError(msg)
         lat, lon = validate_coordinates(wp[0], wp[1])
         validated.append((lat, lon))
 
@@ -262,18 +304,22 @@ def validate_positions(positions: list[tuple[float, float]]) -> list[tuple[float
         SecurityError: If positions are invalid.
     """
     if not isinstance(positions, (list, tuple)):
-        raise SecurityError("Positions must be a list of coordinate pairs")
+        msg = "Positions must be a list of coordinate pairs"
+        raise SecurityError(msg)
 
     if len(positions) < 1:
-        raise SecurityError("At least one position is required")
+        msg = "At least one position is required"
+        raise SecurityError(msg)
 
     if len(positions) > 256:
-        raise SecurityError("Maximum 256 positions allowed")
+        msg = "Maximum 256 positions allowed"
+        raise SecurityError(msg)
 
     validated = []
     for i, pos in enumerate(positions):
         if not isinstance(pos, (list, tuple)) or len(pos) != 2:
-            raise SecurityError(f"Position {i} must be a [lat, lon] pair")
+            msg = f"Position {i} must be a [lat, lon] pair"
+            raise SecurityError(msg)
         lat, lon = validate_coordinates(pos[0], pos[1])
         validated.append((lat, lon))
 
@@ -293,7 +339,8 @@ def validate_departure(departure: str) -> str:
         SecurityError: If format is invalid.
     """
     if not departure or not isinstance(departure, str):
-        raise SecurityError("Departure must be a non-empty string")
+        msg = "Departure must be a non-empty string"
+        raise SecurityError(msg)
 
     departure = departure.strip()
 
@@ -302,10 +349,8 @@ def validate_departure(departure: str) -> str:
         r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$",
         departure,
     ):
-        raise SecurityError(
-            f"Invalid departure format: {departure} "
-            "(expected ISO-8601, e.g. 2026-02-14T08:00:00)"
-        )
+        msg = f"Invalid departure format: {departure} (expected ISO-8601, e.g. 2026-02-14T08:00:00)"
+        raise SecurityError(msg)
 
     return departure
 
@@ -323,15 +368,17 @@ def validate_geometry_format(fmt: str) -> str:
         SecurityError: If format is invalid.
     """
     if not fmt or not isinstance(fmt, str):
-        raise SecurityError("Geometry format must be a non-empty string")
+        msg = "Geometry format must be a non-empty string"
+        raise SecurityError(msg)
 
     fmt = fmt.strip().lower()
 
     if fmt not in SUPPORTED_GEOMETRY_FORMATS:
-        raise SecurityError(
+        msg = (
             f"Invalid geometry format: {fmt} "
             f"(must be one of: {', '.join(sorted(SUPPORTED_GEOMETRY_FORMATS))})"
         )
+        raise SecurityError(msg)
 
     return fmt
 
@@ -395,10 +442,8 @@ class RateLimiter:
             # Check if we have tokens available
             if bucket["tokens"] < 1.0:
                 wait_time = (1.0 - bucket["tokens"]) / (rate / 60.0)
-                raise SecurityError(
-                    f"Rate limit exceeded for {operation}. "
-                    f"Please wait {wait_time:.1f} seconds."
-                )
+                msg = f"Rate limit exceeded for {operation}. Please wait {wait_time:.1f} seconds."
+                raise SecurityError(msg)
 
             # Consume one token
             bucket["tokens"] -= 1.0
@@ -472,18 +517,14 @@ def _get_audit_logger() -> logging.Logger:
             if base is not None and base != str(AUDIT_LOG_FILE):
                 # Close and remove existing handlers
                 for h in list(logger.handlers):
-                    try:
+                    with contextlib.suppress(Exception):
                         h.close()
-                    except Exception:
-                        pass
                     logger.removeHandler(h)
         except Exception:
             # If anything goes wrong, fall back to recreating handlers below
             for h in list(logger.handlers):
-                try:
+                with contextlib.suppress(Exception):
                     h.close()
-                except Exception:
-                    pass
                 logger.removeHandler(h)
 
     if not logger.handlers:

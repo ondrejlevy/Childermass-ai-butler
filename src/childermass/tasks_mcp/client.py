@@ -13,7 +13,7 @@ Security features:
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from googleapiclient.discovery import Resource, build
 
@@ -32,6 +32,7 @@ from .security import (
     validate_tasklist_id,
     validate_tasklist_title,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +64,9 @@ class Task:
     title: str = ""
     notes: str = ""
     status: str = "needsAction"  # "needsAction" | "completed"
-    due: str = ""                # RFC3339 (date portion only)
-    completed: str = ""          # RFC3339 timestamp
-    parent: str = ""             # parent task ID (for subtasks)
+    due: str = ""  # RFC3339 (date portion only)
+    completed: str = ""  # RFC3339 timestamp
+    parent: str = ""  # parent task ID (for subtasks)
     position: str = ""
     hidden: bool = False
     deleted: bool = False
@@ -89,10 +90,11 @@ def get_tasks_service(account: str | None = None) -> Resource:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Tasks accounts found. Run:\n"
                 "  python -m childermass.tasks_mcp.auth --account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
         if account == "default":
             account = None
@@ -114,26 +116,26 @@ def get_tasks_service(account: str | None = None) -> Resource:
 
 def _now_rfc3339() -> str:
     """Get current time in RFC3339 format."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
 def _today_rfc3339() -> str:
     """Get start of today in RFC3339 (UTC)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     return start.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _tomorrow_rfc3339() -> str:
     """Get start of tomorrow in RFC3339 (UTC)."""
-    now = datetime.now(timezone.utc) + timedelta(days=1)
+    now = datetime.now(UTC) + timedelta(days=1)
     end = now.replace(hour=23, minute=59, second=59, microsecond=0)
     return end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _date_offset_rfc3339(days: int = 0) -> str:
     """Get RFC3339 datetime offset by N days from now."""
-    dt = datetime.now(timezone.utc) + timedelta(days=days)
+    dt = datetime.now(UTC) + timedelta(days=days)
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -141,11 +143,13 @@ def _parse_task(task: dict, tasklist_id: str = "") -> Task:
     """Parse Tasks API task resource to Task object."""
     links = []
     for link in task.get("links", []):
-        links.append({
-            "type": link.get("type", ""),
-            "description": link.get("description", ""),
-            "link": link.get("link", ""),
-        })
+        links.append(
+            {
+                "type": link.get("type", ""),
+                "description": link.get("description", ""),
+                "link": link.get("link", ""),
+            }
+        )
 
     return Task(
         id=task.get("id", ""),
@@ -294,11 +298,7 @@ def update_tasklist(
     service = get_tasks_service(account)
 
     body = {"title": title}
-    updated = (
-        service.tasklists()
-        .update(tasklist=tasklist_id, body=body)
-        .execute()
-    )
+    updated = service.tasklists().update(tasklist=tasklist_id, body=body).execute()
 
     result = _parse_tasklist(updated)
 
@@ -436,11 +436,7 @@ def get_task(
     rate_limiter.check(acct_key, "get_task")
 
     service = get_tasks_service(account)
-    task = (
-        service.tasks()
-        .get(tasklist=tasklist_id, task=task_id)
-        .execute()
-    )
+    task = service.tasks().get(tasklist=tasklist_id, task=task_id).execute()
 
     return _parse_task(task, tasklist_id)
 
@@ -551,11 +547,7 @@ def update_task(
     service = get_tasks_service(account)
 
     # Step 1: GET current task
-    existing = (
-        service.tasks()
-        .get(tasklist=tasklist_id, task=task_id)
-        .execute()
-    )
+    existing = service.tasks().get(tasklist=tasklist_id, task=task_id).execute()
 
     # Step 2: Merge changes
     if title is not None:
@@ -576,11 +568,7 @@ def update_task(
             existing.pop("completed", None)
 
     # Step 3: UPDATE
-    updated = (
-        service.tasks()
-        .update(tasklist=tasklist_id, task=task_id, body=existing)
-        .execute()
-    )
+    updated = service.tasks().update(tasklist=tasklist_id, task=task_id, body=existing).execute()
 
     result = _parse_task(updated, tasklist_id)
 
@@ -622,20 +610,12 @@ def complete_task(
     service = get_tasks_service(account)
 
     # GET + UPDATE to preserve etag
-    existing = (
-        service.tasks()
-        .get(tasklist=tasklist_id, task=task_id)
-        .execute()
-    )
+    existing = service.tasks().get(tasklist=tasklist_id, task=task_id).execute()
 
     existing["status"] = "completed"
     existing["completed"] = _now_rfc3339()
 
-    updated = (
-        service.tasks()
-        .update(tasklist=tasklist_id, task=task_id, body=existing)
-        .execute()
-    )
+    updated = service.tasks().update(tasklist=tasklist_id, task=task_id, body=existing).execute()
 
     result = _parse_task(updated, tasklist_id)
 
@@ -676,20 +656,12 @@ def uncomplete_task(
 
     service = get_tasks_service(account)
 
-    existing = (
-        service.tasks()
-        .get(tasklist=tasklist_id, task=task_id)
-        .execute()
-    )
+    existing = service.tasks().get(tasklist=tasklist_id, task=task_id).execute()
 
     existing["status"] = "needsAction"
     existing.pop("completed", None)
 
-    updated = (
-        service.tasks()
-        .update(tasklist=tasklist_id, task=task_id, body=existing)
-        .execute()
-    )
+    updated = service.tasks().update(tasklist=tasklist_id, task=task_id, body=existing).execute()
 
     result = _parse_task(updated, tasklist_id)
 
@@ -958,8 +930,7 @@ def search_tasks(
     return [
         task
         for task in all_tasks
-        if query_lower in task.title.lower()
-        or query_lower in task.notes.lower()
+        if query_lower in task.title.lower() or query_lower in task.notes.lower()
     ]
 
 
@@ -990,16 +961,20 @@ def bulk_complete(
                 task_id=task_id,
                 account=account,
             )
-            results.append({
-                "task_id": task_id,
-                "title": task.title,
-                "success": True,
-            })
+            results.append(
+                {
+                    "task_id": task_id,
+                    "title": task.title,
+                    "success": True,
+                }
+            )
         except Exception as e:
-            results.append({
-                "task_id": task_id,
-                "success": False,
-                "error": sanitize_error_message(e),
-            })
+            results.append(
+                {
+                    "task_id": task_id,
+                    "success": False,
+                    "error": sanitize_error_message(e),
+                }
+            )
 
     return results

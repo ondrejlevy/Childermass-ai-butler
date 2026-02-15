@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message, sanitize_filename
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-gmail")
 
@@ -165,9 +166,7 @@ def gmail_send_email(
         # Parse attachment paths
         paths_list = None
         if attachment_paths:
-            paths_list = [
-                p.strip() for p in attachment_paths.split(",") if p.strip()
-            ]
+            paths_list = [p.strip() for p in attachment_paths.split(",") if p.strip()]
 
         # Parse forward attachments (format: "msg_id:att_id, msg_id:att_id")
         forward_list = None
@@ -179,7 +178,7 @@ def gmail_send_email(
                     msg_id, att_id = item.split(":", 1)
                     forward_list.append((msg_id.strip(), att_id.strip()))
 
-        result = client.send_email(
+        return client.send_email(
             to=to,
             subject=subject,
             body=body,
@@ -190,7 +189,6 @@ def gmail_send_email(
             forward_attachments=forward_list,
             account=account or None,
         )
-        return result
 
     except SecurityError as e:
         return {"error": str(e)}
@@ -228,9 +226,7 @@ def gmail_create_draft(
     try:
         paths_list = None
         if attachment_paths:
-            paths_list = [
-                p.strip() for p in attachment_paths.split(",") if p.strip()
-            ]
+            paths_list = [p.strip() for p in attachment_paths.split(",") if p.strip()]
 
         forward_list = None
         if forward_attachments:
@@ -241,7 +237,7 @@ def gmail_create_draft(
                     msg_id, att_id = item.split(":", 1)
                     forward_list.append((msg_id.strip(), att_id.strip()))
 
-        result = client.create_draft(
+        return client.create_draft(
             to=to,
             subject=subject,
             body=body,
@@ -250,7 +246,6 @@ def gmail_create_draft(
             attachment_paths=paths_list,
             forward_attachments=forward_list,
         )
-        return result
 
     except SecurityError as e:
         return {"error": str(e)}
@@ -302,11 +297,7 @@ def gmail_modify_labels(
             else None
         )
         remove_list = (
-            [
-                label.strip()
-                for label in remove_labels.split(",")
-                if label.strip()
-            ]
+            [label.strip() for label in remove_labels.split(",") if label.strip()]
             if remove_labels
             else None
         )
@@ -414,14 +405,13 @@ def gmail_reply(
         Sent message ID, thread ID, and account used
     """
     try:
-        result = client.reply_to_email(
+        return client.reply_to_email(
             message_id=message_id,
             body=body,
             reply_all=reply_all,
             quote_original=quote_original,
             account=account or None,
         )
-        return result
     except SecurityError as e:
         return {"error": str(e)}
     except Exception as e:
@@ -516,14 +506,13 @@ def gmail_forward(
         Sent message ID, thread ID, and account used
     """
     try:
-        result = client.forward_email(
+        return client.forward_email(
             message_id=message_id,
             to=to,
             body=body,
             include_attachments=include_attachments,
             account=account or None,
         )
-        return result
     except SecurityError as e:
         return {"error": str(e)}
     except Exception as e:

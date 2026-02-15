@@ -15,6 +15,7 @@ import logging
 import os
 from pathlib import Path
 
+
 logger = logging.getLogger(__name__)
 
 # Default paths
@@ -50,9 +51,7 @@ def _is_keyring_available() -> bool:
 
 def get_config_path() -> Path:
     """Get console configuration path from env or default."""
-    return Path(
-        os.getenv("NETWORK_CONFIG_PATH", str(DEFAULT_CONFIG_PATH))
-    )
+    return Path(os.getenv("NETWORK_CONFIG_PATH", str(DEFAULT_CONFIG_PATH)))
 
 
 def _save_to_keyring(key: str, value: str) -> bool:
@@ -64,10 +63,11 @@ def _save_to_keyring(key: str, value: str) -> bool:
         import keyring
 
         keyring.set_password(KEYRING_SERVICE, key, value)
-        return True
     except Exception as e:
         logger.warning("Keyring save failed: %s", e)
         return False
+    else:
+        return True
 
 
 def _load_from_keyring(key: str) -> str | None:
@@ -93,9 +93,10 @@ def _delete_from_keyring(key: str) -> bool:
         import keyring
 
         keyring.delete_password(KEYRING_SERVICE, key)
-        return True
     except Exception:
         return False
+    else:
+        return True
 
 
 def load_config() -> dict | None:
@@ -115,7 +116,7 @@ def load_config() -> dict | None:
         with open(config_path) as f:
             config = json.load(f)
     except (json.JSONDecodeError, OSError) as e:
-        logger.error("Failed to load config: %s", e)
+        logger.exception("Failed to load config: %s", e)
         return None
 
     # Try to load password from keyring
@@ -171,11 +172,9 @@ def save_config(
     config_path.chmod(0o600)
 
     if saved_to_keyring:
-        print(f"✓ Password stored in system keyring ({KEYRING_SERVICE})")
-        print(f"✓ Config saved to {config_path}")
+        pass
     else:
-        print(f"⚠ Keyring unavailable, all credentials saved to {config_path}")
-        print("  Consider installing keyring backend for better security")
+        pass
 
 
 def get_console_url(config: dict | None = None) -> str:
@@ -188,10 +187,11 @@ def get_console_url(config: dict | None = None) -> str:
         config = load_config()
 
     if config is None:
-        raise RuntimeError(
+        msg = (
             "Console not configured. Run setup first:\n"
             "  python -m childermass.network_mcp.auth --setup"
         )
+        raise RuntimeError(msg)
 
     host = config["host"]
     port = config.get("port", 443)
@@ -211,10 +211,11 @@ def get_credentials(config: dict | None = None) -> tuple[str, str]:
         config = load_config()
 
     if config is None:
-        raise RuntimeError(
+        msg = (
             "Console not configured. Run setup first:\n"
             "  python -m childermass.network_mcp.auth --setup"
         )
+        raise RuntimeError(msg)
 
     return config["username"], config["password"]
 
@@ -241,25 +242,19 @@ def setup_interactive() -> None:
     """
     Interactive setup flow for console connection.
     """
-    print("\n=== Childermass UniFi Network MCP – Setup ===\n")
 
     # Check existing config
     existing = load_config()
     if existing:
-        print("Existing configuration found:")
-        print(f"  Console: {existing['host']}:{existing.get('port', 443)}")
-        print(f"  User: {existing['username']}")
         if existing.get("site_id"):
-            print(f"  Site ID: {existing['site_id']}")
+            pass
         resp = input("\nOverwrite? [y/N]: ").strip().lower()
         if resp != "y":
-            print("Setup cancelled.")
             return
 
     # Gather info
     host = input("Console IP address or hostname: ").strip()
     if not host:
-        print("✗ Host is required")
         return
 
     port_str = input("Port [443]: ").strip()
@@ -267,12 +262,10 @@ def setup_interactive() -> None:
 
     username = input("Username: ").strip()
     if not username:
-        print("✗ Username is required")
         return
 
     password = getpass.getpass("Password: ")
     if not password:
-        print("✗ Password is required")
         return
 
     site_id = input("Default Site ID (UUID, or leave empty to discover later): ").strip()
@@ -290,23 +283,15 @@ def setup_interactive() -> None:
         verify_ssl=ssl_verify,
     )
 
-    print("\n=== ✓ Configuration saved! ===")
-    print(f"\nConsole: https://{host}:{port}")
-    print(f"User: {username}")
     if site_id:
-        print(f"Site ID: {site_id}")
-    print(f"SSL verify: {ssl_verify}")
-    print("\nYou can now use the Network MCP server.\n")
+        pass
 
 
 def test_connection() -> None:
     """Test connectivity to the console and Network API."""
     config = load_config()
     if config is None:
-        print("✗ No configuration found. Run --setup first.")
         return
-
-    print(f"\n→ Testing connection to {config['host']}...")
 
     try:
         import httpx
@@ -336,8 +321,6 @@ def test_connection() -> None:
             )
 
             if login_resp.status_code == 200:
-                print("✓ Authentication successful!")
-
                 # Step 3: Test Network API
                 csrf_updated = login_resp.headers.get(
                     "x-updated-csrf-token",
@@ -350,70 +333,46 @@ def test_connection() -> None:
                 )
 
                 if info_resp.status_code == 200:
-                    data = info_resp.json()
-                    print("✓ Network API accessible!")
-                    print(f"  Version: {data.get('version', '?')}")
+                    info_resp.json()
 
                     # Try listing networks if site_id is configured
                     site_id = config.get("site_id")
                     if site_id:
                         networks_resp = client.get(
-                            f"{base_url}/proxy/network/integration"
-                            f"/v1/sites/{site_id}/networks",
+                            f"{base_url}/proxy/network/integration/v1/sites/{site_id}/networks",
                             headers={"x-csrf-token": csrf_updated},
                             params={"limit": 50},
                         )
                         if networks_resp.status_code == 200:
                             net_data = networks_resp.json()
                             networks = net_data.get("data", [])
-                            print(f"  Networks: {len(networks)}")
                             for net in networks:
-                                vlan = net.get("vlanId", "untagged")
-                                enabled = "✓" if net.get("enabled", True) else "✗"
-                                print(
-                                    f"    {enabled} {net.get('name', '?')} "
-                                    f"(VLAN {vlan})"
-                                )
+                                net.get("vlanId", "untagged")
+                                "✓" if net.get("enabled", True) else "✗"
                         else:
-                            print(
-                                f"  ⚠ Could not list networks "
-                                f"(HTTP {networks_resp.status_code})"
-                            )
+                            pass
                     else:
-                        print("  ℹ No site_id configured – "
-                              "run --setup to add one for full testing")
+                        pass
                 else:
-                    print(
-                        f"✗ Network API returned {info_resp.status_code}"
-                    )
+                    pass
             elif login_resp.status_code == 401:
-                print("✗ Authentication failed – invalid username or password")
+                pass
             else:
-                print(f"✗ Login returned HTTP {login_resp.status_code}")
+                pass
 
     except httpx.ConnectError:
-        print(f"✗ Cannot connect to {config['host']}")
-        print("  Check that the console IP is correct and reachable")
-    except Exception as e:
-        print(f"✗ Connection test failed: {e}")
+        pass
+    except Exception:
+        pass
 
 
 def show_config() -> None:
     """Display current configuration (without password)."""
     config = load_config()
     if config is None:
-        print("No configuration found. Run --setup first.")
         return
 
-    storage = "keyring + file" if _is_keyring_available() else "file only"
-    print(f"Storage backend: {storage}\n")
-    print(f"Console host: {config['host']}")
-    print(f"Console port: {config.get('port', 443)}")
-    print(f"Username: {config['username']}")
-    print(f"Password: {'********' if config.get('password') else '(not set)'}")
-    print(f"Site ID: {config.get('site_id', '(not set)')}")
-    print(f"SSL verify: {config.get('verify_ssl', False)}")
-    print(f"Config path: {get_config_path()}")
+    "keyring + file" if _is_keyring_available() else "file only"
 
 
 def revoke_config() -> None:
@@ -423,8 +382,6 @@ def revoke_config() -> None:
     config_path = get_config_path()
     if config_path.exists():
         config_path.unlink()
-
-    print("✓ Configuration and credentials deleted")
 
 
 def main() -> None:

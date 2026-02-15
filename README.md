@@ -181,6 +181,74 @@ Agent behavior is defined in `.opencode/agents/`:
 - `kreacher.md` - Security specialist (planned)
 - `jorge.md` - Information curator (planned)
 
+## Development & CI/CD
+
+### Testing & Code Quality
+
+All MCP servers include comprehensive testing and code quality checks:
+
+```bash
+# Using Make (recommended)
+make help              # Show all available commands
+make install           # Install development dependencies
+make test              # Run all tests
+make test-cov          # Run tests with coverage
+make lint              # Check code quality
+make format            # Auto-format code
+make security          # Run security scans
+make ci                # Run full CI pipeline locally
+
+# Or manually
+pytest src/ -v                                    # Run tests
+ruff check src/                                   # Lint code
+mypy src/ --ignore-missing-imports               # Type check
+bandit -r src/                                    # Security scan
+```
+
+### GitHub Actions Workflows
+
+Automated CI/CD pipelines run on every push and PR:
+
+- **CI Pipeline** (`.github/workflows/ci.yml`)
+  - Code linting with Ruff
+  - Type checking with MyPy
+  - Security auditing (pip-audit, Bandit, Safety)
+  - Comprehensive test suite for all MCP servers
+  - Coverage reporting
+
+- **CodeQL Analysis** (`.github/workflows/codeql.yml`)
+  - Advanced security vulnerability detection
+  - Weekly automated scans
+
+- **OSSF Scorecard** (`.github/workflows/scorecard.yml`)
+  - Open source security best practices scoring
+  - Supply chain security assessment
+
+- **Secrets Scanning** (`.github/workflows/secrets-scan.yml`)
+  - TruffleHog and GitLeaks for credential detection
+  - Daily automated scans
+
+### Dependabot
+
+Automatic dependency updates configured for:
+- All 11 MCP servers (Python dependencies)
+- GitHub Actions
+- Weekly schedule with automatic PRs
+
+See [docs/CI_CD.md](docs/CI_CD.md) for detailed documentation.
+
+### Pre-commit Hooks
+
+Optional but recommended for local development:
+
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+Configuration: `.pre-commit-config.yaml`
+
 ## Troubleshooting
 
 ### Module Import Errors

@@ -4,6 +4,7 @@ This module provides input validation, rate limiting, error sanitization,
 and audit logging for the memory MCP server.
 """
 
+import contextlib
 import json
 import logging
 import re
@@ -30,7 +31,6 @@ MAX_PREDICATE_LENGTH = 100
 
 class SecurityError(Exception):
     """Raised when security validation fails."""
-    pass
 
 
 # ============================================================================
@@ -51,15 +51,18 @@ def validate_memory_content(content: str) -> str:
         SecurityError: If content is invalid.
     """
     if not content or not isinstance(content, str):
-        raise SecurityError("Memory content must be a non-empty string")
+        msg = "Memory content must be a non-empty string"
+        raise SecurityError(msg)
 
     content = content.strip()
 
     if len(content) < 3:
-        raise SecurityError("Memory content too short (minimum 3 characters)")
+        msg = "Memory content too short (minimum 3 characters)"
+        raise SecurityError(msg)
 
     if len(content) > MAX_CONTENT_LENGTH:
-        raise SecurityError(f"Memory content too long (maximum {MAX_CONTENT_LENGTH} characters)")
+        msg = f"Memory content too long (maximum {MAX_CONTENT_LENGTH} characters)"
+        raise SecurityError(msg)
 
     return content
 
@@ -77,15 +80,18 @@ def validate_query(query: str) -> str:
         SecurityError: If query is invalid.
     """
     if not query or not isinstance(query, str):
-        raise SecurityError("Query must be a non-empty string")
+        msg = "Query must be a non-empty string"
+        raise SecurityError(msg)
 
     query = query.strip()
 
     if len(query) < 2:
-        raise SecurityError("Query too short (minimum 2 characters)")
+        msg = "Query too short (minimum 2 characters)"
+        raise SecurityError(msg)
 
     if len(query) > MAX_QUERY_LENGTH:
-        raise SecurityError(f"Query too long (maximum {MAX_QUERY_LENGTH} characters)")
+        msg = f"Query too long (maximum {MAX_QUERY_LENGTH} characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -103,19 +109,22 @@ def validate_memory_id(memory_id: str) -> str:
         SecurityError: If ID is invalid.
     """
     if not memory_id or not isinstance(memory_id, str):
-        raise SecurityError("Memory ID must be a non-empty string")
+        msg = "Memory ID must be a non-empty string"
+        raise SecurityError(msg)
 
     memory_id = memory_id.strip()
 
     if len(memory_id) > MAX_MEMORY_ID_LENGTH:
-        raise SecurityError(f"Memory ID too long (maximum {MAX_MEMORY_ID_LENGTH} characters)")
+        msg = f"Memory ID too long (maximum {MAX_MEMORY_ID_LENGTH} characters)"
+        raise SecurityError(msg)
 
     # Allow UUIDs, hex strings, and alphanumeric IDs
     if not re.match(r"^[a-zA-Z0-9\-_]+$", memory_id):
-        raise SecurityError(
+        msg = (
             "Memory ID contains invalid characters "
             "(only alphanumeric, hyphens, underscores allowed)"
         )
+        raise SecurityError(msg)
 
     return memory_id
 
@@ -136,25 +145,30 @@ def validate_tags(tags: list[str] | None) -> list[str]:
         return []
 
     if not isinstance(tags, list):
-        raise SecurityError("Tags must be a list of strings")
+        msg = "Tags must be a list of strings"
+        raise SecurityError(msg)
 
     if len(tags) > MAX_TAGS_COUNT:
-        raise SecurityError(f"Too many tags (maximum {MAX_TAGS_COUNT})")
+        msg = f"Too many tags (maximum {MAX_TAGS_COUNT})"
+        raise SecurityError(msg)
 
     validated = []
     for tag in tags:
         if not isinstance(tag, str):
-            raise SecurityError("Each tag must be a string")
+            msg = "Each tag must be a string"
+            raise SecurityError(msg)
         tag = tag.strip().lower()
         if not tag:
             continue
         if len(tag) > MAX_TAG_LENGTH:
-            raise SecurityError(f"Tag too long: '{tag[:20]}...' (maximum {MAX_TAG_LENGTH} characters)")
+            msg = f"Tag too long: '{tag[:20]}...' (maximum {MAX_TAG_LENGTH} characters)"
+            raise SecurityError(msg)
         if not re.match(r"^[a-zA-Z0-9\-_\u00C0-\u024F]+$", tag):
-            raise SecurityError(
+            msg = (
                 f"Tag '{tag}' contains invalid characters "
                 "(only alphanumeric, hyphens, underscores, accented letters allowed)"
             )
+            raise SecurityError(msg)
         validated.append(tag)
 
     return validated
@@ -176,15 +190,14 @@ def validate_sector(sector: str) -> str:
         SecurityError: If sector is invalid.
     """
     if not sector or not isinstance(sector, str):
-        raise SecurityError("Sector must be a non-empty string")
+        msg = "Sector must be a non-empty string"
+        raise SecurityError(msg)
 
     sector = sector.strip().lower()
 
     if sector not in VALID_SECTORS:
-        raise SecurityError(
-            f"Invalid sector: '{sector}' "
-            f"(must be one of: {', '.join(sorted(VALID_SECTORS))})"
-        )
+        msg = f"Invalid sector: '{sector}' (must be one of: {', '.join(sorted(VALID_SECTORS))})"
+        raise SecurityError(msg)
 
     return sector
 
@@ -205,15 +218,17 @@ def validate_category(category: str) -> str:
         SecurityError: If category is invalid.
     """
     if not category or not isinstance(category, str):
-        raise SecurityError("Category must be a non-empty string")
+        msg = "Category must be a non-empty string"
+        raise SecurityError(msg)
 
     category = category.strip().lower()
 
     if category not in VALID_CATEGORIES:
-        raise SecurityError(
+        msg = (
             f"Invalid category: '{category}' "
             f"(must be one of: {', '.join(sorted(VALID_CATEGORIES))})"
         )
+        raise SecurityError(msg)
 
     return category
 
@@ -231,13 +246,16 @@ def validate_limit(limit: int) -> int:
         SecurityError: If limit is invalid.
     """
     if not isinstance(limit, int):
-        raise SecurityError("Limit must be an integer")
+        msg = "Limit must be an integer"
+        raise SecurityError(msg)
 
     if limit < 1:
-        raise SecurityError("Limit must be at least 1")
+        msg = "Limit must be at least 1"
+        raise SecurityError(msg)
 
     if limit > 100:
-        raise SecurityError("Limit cannot exceed 100")
+        msg = "Limit cannot exceed 100"
+        raise SecurityError(msg)
 
     return limit
 
@@ -255,27 +273,31 @@ def validate_temporal_date(date_str: str) -> str:
         SecurityError: If date format is invalid.
     """
     if not date_str or not isinstance(date_str, str):
-        raise SecurityError("Date must be a non-empty string")
+        msg = "Date must be a non-empty string"
+        raise SecurityError(msg)
 
     date_str = date_str.strip()
 
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        raise SecurityError(
-            f"Invalid date format: '{date_str}' (expected YYYY-MM-DD)"
-        )
+        msg = f"Invalid date format: '{date_str}' (expected YYYY-MM-DD)"
+        raise SecurityError(msg)
 
     try:
         year, month, day = map(int, date_str.split("-"))
         if not (1900 <= year <= 2100):
-            raise SecurityError(f"Year out of range: {year}")
+            msg = f"Year out of range: {year}"
+            raise SecurityError(msg)
         if not (1 <= month <= 12):
-            raise SecurityError(f"Month out of range: {month}")
+            msg = f"Month out of range: {month}"
+            raise SecurityError(msg)
         if not (1 <= day <= 31):
-            raise SecurityError(f"Day out of range: {day}")
+            msg = f"Day out of range: {day}"
+            raise SecurityError(msg)
         # Verify it's a real date
         datetime(year, month, day)
     except ValueError:
-        raise SecurityError(f"Invalid date: {date_str}")
+        msg = f"Invalid date: {date_str}"
+        raise SecurityError(msg)
 
     return date_str
 
@@ -293,15 +315,18 @@ def validate_subject(subject: str) -> str:
         SecurityError: If subject is invalid.
     """
     if not subject or not isinstance(subject, str):
-        raise SecurityError("Subject must be a non-empty string")
+        msg = "Subject must be a non-empty string"
+        raise SecurityError(msg)
 
     subject = subject.strip()
 
     if len(subject) < 1:
-        raise SecurityError("Subject too short")
+        msg = "Subject too short"
+        raise SecurityError(msg)
 
     if len(subject) > 200:
-        raise SecurityError("Subject too long (maximum 200 characters)")
+        msg = "Subject too long (maximum 200 characters)"
+        raise SecurityError(msg)
 
     return subject
 
@@ -319,15 +344,18 @@ def validate_predicate(predicate: str) -> str:
         SecurityError: If predicate is invalid.
     """
     if not predicate or not isinstance(predicate, str):
-        raise SecurityError("Predicate must be a non-empty string")
+        msg = "Predicate must be a non-empty string"
+        raise SecurityError(msg)
 
     predicate = predicate.strip()
 
     if len(predicate) < 1:
-        raise SecurityError("Predicate too short")
+        msg = "Predicate too short"
+        raise SecurityError(msg)
 
     if len(predicate) > 200:
-        raise SecurityError("Predicate too long (maximum 200 characters)")
+        msg = "Predicate too long (maximum 200 characters)"
+        raise SecurityError(msg)
 
     return predicate
 
@@ -372,10 +400,7 @@ class RateLimiter:
 
         with self._lock:
             if operation not in self.buckets:
-                self.buckets[operation] = {
-                    "tokens": float(capacity),
-                    "last_update": time.time()
-                }
+                self.buckets[operation] = {"tokens": float(capacity), "last_update": time.time()}
 
             bucket = self.buckets[operation]
 
@@ -387,10 +412,8 @@ class RateLimiter:
 
             if bucket["tokens"] < 1.0:
                 wait_time = (1.0 - bucket["tokens"]) / (rate / 60.0)
-                raise SecurityError(
-                    f"Rate limit exceeded for {operation}. "
-                    f"Please wait {wait_time:.1f} seconds."
-                )
+                msg = f"Rate limit exceeded for {operation}. Please wait {wait_time:.1f} seconds."
+                raise SecurityError(msg)
 
             bucket["tokens"] -= 1.0
 
@@ -416,15 +439,17 @@ def sanitize_error_message(error: Exception) -> str:
     message = str(error)
 
     # Remove file paths
-    message = re.sub(r'/[a-zA-Z0-9_\-./]+', '[PATH]', message)
-    message = re.sub(r'[A-Z]:\\[a-zA-Z0-9_\-\\]+', '[PATH]', message)
+    message = re.sub(r"/[a-zA-Z0-9_\-./]+", "[PATH]", message)
+    message = re.sub(r"[A-Z]:\\[a-zA-Z0-9_\-\\]+", "[PATH]", message)
 
     # Remove potential API keys
-    message = re.sub(r'\b[0-9a-f]{32}\b', '[KEY]', message, flags=re.IGNORECASE)
-    message = re.sub(r'sk-[a-zA-Z0-9]+', '[KEY]', message)
+    message = re.sub(r"\b[0-9a-f]{32}\b", "[KEY]", message, flags=re.IGNORECASE)
+    message = re.sub(r"sk-[a-zA-Z0-9]+", "[KEY]", message)
 
     # Remove SQL queries that might leak schema
-    message = re.sub(r'(SELECT|INSERT|UPDATE|DELETE|CREATE)\s+.*', '[SQL]', message, flags=re.IGNORECASE)
+    message = re.sub(
+        r"(SELECT|INSERT|UPDATE|DELETE|CREATE)\s+.*", "[SQL]", message, flags=re.IGNORECASE
+    )
 
     # Limit length
     if len(message) > 300:
@@ -453,25 +478,19 @@ def _get_audit_logger() -> logging.Logger:
             base = getattr(first, "baseFilename", None)
             if base is not None and base != str(AUDIT_LOG_FILE):
                 for h in list(logger.handlers):
-                    try:
+                    with contextlib.suppress(Exception):
                         h.close()
-                    except Exception:
-                        pass
                     logger.removeHandler(h)
         except Exception:
             for h in list(logger.handlers):
-                try:
+                with contextlib.suppress(Exception):
                     h.close()
-                except Exception:
-                    pass
                 logger.removeHandler(h)
 
     if not logger.handlers:
         # Ensure the configured directory exists (tests may override CONFIG_DIR)
-        try:
+        with contextlib.suppress(Exception):
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
         from logging.handlers import RotatingFileHandler
 
         handler = RotatingFileHandler(

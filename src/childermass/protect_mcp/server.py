@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-protect")
 
@@ -134,9 +135,7 @@ def protect_list_events(
         start_ms = now_ms - (hours_back * 60 * 60 * 1000)
 
         types_list = (
-            [t.strip() for t in event_types.split(",") if t.strip()]
-            if event_types
-            else None
+            [t.strip() for t in event_types.split(",") if t.strip()] if event_types else None
         )
         smart_list = (
             [t.strip() for t in smart_detect_types.split(",") if t.strip()]

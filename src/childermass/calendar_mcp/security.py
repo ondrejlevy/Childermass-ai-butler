@@ -19,8 +19,6 @@ import validators
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -45,9 +43,7 @@ MAX_ATTENDEES = 200
 VALID_COLOR_IDS = {str(i) for i in range(1, 12)}  # "1" through "11"
 
 # Valid IANA timezone examples (validated via pattern, not exhaustive list)
-_TZ_PATTERN = re.compile(
-    r"^[A-Za-z][A-Za-z0-9_+\-]*/[A-Za-z][A-Za-z0-9_+\-/]*$"
-)
+_TZ_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_+\-]*/[A-Za-z][A-Za-z0-9_+\-/]*$")
 
 # Allowed recurrence rule prefixes (RFC 5545)
 _RRULE_PREFIXES = {"RRULE:", "EXRULE:", "RDATE:", "EXDATE:"}
@@ -66,7 +62,8 @@ def validate_calendar_id(calendar_id: str) -> str:
     Returns normalised calendar ID.
     """
     if not calendar_id or not isinstance(calendar_id, str):
-        raise SecurityError("Calendar ID is required")
+        msg = "Calendar ID is required"
+        raise SecurityError(msg)
 
     calendar_id = calendar_id.strip()
 
@@ -76,12 +73,14 @@ def validate_calendar_id(calendar_id: str) -> str:
 
     # Check for injection characters
     if any(char in calendar_id for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Calendar ID contains invalid control characters")
+        msg = "Calendar ID contains invalid control characters"
+        raise SecurityError(msg)
 
     # Calendar IDs are typically email-like or encoded group IDs
     # Allow alphanumeric, @, ., -, _, #, and %
     if not re.match(r"^[a-zA-Z0-9@.\-_#%]+$", calendar_id):
-        raise SecurityError(f"Invalid calendar ID format: {calendar_id}")
+        msg = f"Invalid calendar ID format: {calendar_id}"
+        raise SecurityError(msg)
 
     return calendar_id
 
@@ -94,18 +93,19 @@ def validate_event_id(event_id: str) -> str:
     length between 5 and 1024 characters.
     """
     if not event_id or not isinstance(event_id, str):
-        raise SecurityError("Event ID is required")
+        msg = "Event ID is required"
+        raise SecurityError(msg)
 
     event_id = event_id.strip()
 
     # Event IDs: alphanumeric (base32hex + possible extra chars from Google)
     if not re.match(r"^[a-zA-Z0-9_]+$", event_id):
-        raise SecurityError(f"Invalid event ID format: {event_id}")
+        msg = f"Invalid event ID format: {event_id}"
+        raise SecurityError(msg)
 
     if len(event_id) < 5 or len(event_id) > 1024:
-        raise SecurityError(
-            f"Event ID length must be 5-1024 chars, got {len(event_id)}"
-        )
+        msg = f"Event ID length must be 5-1024 chars, got {len(event_id)}"
+        raise SecurityError(msg)
 
     return event_id
 
@@ -119,7 +119,8 @@ def validate_datetime(dt_string: str) -> str:
     - Date only: 2024-01-15 (for all-day events)
     """
     if not dt_string or not isinstance(dt_string, str):
-        raise SecurityError("DateTime value is required")
+        msg = "DateTime value is required"
+        raise SecurityError(msg)
 
     dt_string = dt_string.strip()
 
@@ -129,17 +130,15 @@ def validate_datetime(dt_string: str) -> str:
 
     # Full RFC3339 datetime
     # 2024-01-15T10:00:00Z or 2024-01-15T10:00:00+01:00 or 2024-01-15T10:00:00-05:00
-    rfc3339_pattern = (
-        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
-        r"(Z|[+\-]\d{2}:\d{2})$"
-    )
+    rfc3339_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+\-]\d{2}:\d{2})$"
 
     if not re.match(rfc3339_pattern, dt_string):
-        raise SecurityError(
+        msg = (
             f"Invalid datetime format: {dt_string}. "
             "Expected RFC3339 (e.g., 2024-01-15T10:00:00+01:00) "
             "or date (2024-01-15)"
         )
+        raise SecurityError(msg)
 
     return dt_string
 
@@ -151,7 +150,8 @@ def validate_timezone(timezone: str) -> str:
     Accepts formats like: Europe/Prague, America/New_York, UTC, Etc/GMT+1
     """
     if not timezone or not isinstance(timezone, str):
-        raise SecurityError("Timezone is required")
+        msg = "Timezone is required"
+        raise SecurityError(msg)
 
     timezone = timezone.strip()
 
@@ -165,10 +165,11 @@ def validate_timezone(timezone: str) -> str:
 
     # Standard IANA pattern: Region/City or Region/Sub/City
     if not _TZ_PATTERN.match(timezone):
-        raise SecurityError(
+        msg = (
             f"Invalid timezone format: {timezone}. "
             "Use IANA format (e.g., Europe/Prague, America/New_York)"
         )
+        raise SecurityError(msg)
 
     return timezone
 
@@ -186,7 +187,8 @@ def validate_recurrence(rules: list[str]) -> list[str]:
     validated = []
     for rule in rules:
         if not isinstance(rule, str):
-            raise SecurityError(f"Recurrence rule must be a string: {rule}")
+            msg = f"Recurrence rule must be a string: {rule}"
+            raise SecurityError(msg)
 
         rule = rule.strip()
         if not rule:
@@ -195,23 +197,21 @@ def validate_recurrence(rules: list[str]) -> list[str]:
         # Check prefix
         upper = rule.upper()
         if not any(upper.startswith(prefix) for prefix in _RRULE_PREFIXES):
-            raise SecurityError(
+            msg = (
                 f"Invalid recurrence rule: {rule}. "
                 "Must start with RRULE:, EXRULE:, RDATE:, or EXDATE:"
             )
+            raise SecurityError(msg)
 
         # Reject DTSTART/DTEND (these go in start/end fields)
-        if upper.startswith("DTSTART") or upper.startswith("DTEND"):
-            raise SecurityError(
-                "DTSTART/DTEND not allowed in recurrence rules. "
-                "Use start/end parameters instead."
-            )
+        if upper.startswith(("DTSTART", "DTEND")):
+            msg = "DTSTART/DTEND not allowed in recurrence rules. Use start/end parameters instead."
+            raise SecurityError(msg)
 
         # Basic safety: no control chars
         if any(char in rule for char in ["\0", "\r"]):
-            raise SecurityError(
-                "Recurrence rule contains invalid control characters"
-            )
+            msg = "Recurrence rule contains invalid control characters"
+            raise SecurityError(msg)
 
         validated.append(rule)
 
@@ -234,9 +234,8 @@ def validate_attendees(emails: str) -> list[str]:
             validated.append(validate_email(email))
 
     if len(validated) > MAX_ATTENDEES:
-        raise SecurityError(
-            f"Too many attendees: {len(validated)} (max {MAX_ATTENDEES})"
-        )
+        msg = f"Too many attendees: {len(validated)} (max {MAX_ATTENDEES})"
+        raise SecurityError(msg)
 
     return validated
 
@@ -248,7 +247,8 @@ def validate_email(email: str) -> str:
     Returns normalised email address. Raises SecurityError on invalid input.
     """
     if not email or not isinstance(email, str):
-        raise SecurityError("Email address is required")
+        msg = "Email address is required"
+        raise SecurityError(msg)
 
     email = email.strip()
 
@@ -262,10 +262,12 @@ def validate_email(email: str) -> str:
 
     # Check for injection characters
     if any(char in email_lower for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Email contains invalid control characters")
+        msg = "Email contains invalid control characters"
+        raise SecurityError(msg)
 
     if not validators.email(email_lower):
-        raise SecurityError(f"Invalid email address format: {email}")
+        msg = f"Invalid email address format: {email}"
+        raise SecurityError(msg)
 
     return email_lower
 
@@ -277,13 +279,12 @@ def validate_event_summary(summary: str) -> str:
 
     # Reject newlines
     if any(c in summary for c in ["\n", "\r"]):
-        raise SecurityError("Event summary contains invalid newline characters")
+        msg = "Event summary contains invalid newline characters"
+        raise SecurityError(msg)
 
     if len(summary) > MAX_SUMMARY_LENGTH:
-        raise SecurityError(
-            f"Event summary too long: {len(summary)} chars "
-            f"(max {MAX_SUMMARY_LENGTH})"
-        )
+        msg = f"Event summary too long: {len(summary)} chars (max {MAX_SUMMARY_LENGTH})"
+        raise SecurityError(msg)
 
     return summary
 
@@ -294,10 +295,8 @@ def validate_event_description(description: str) -> str:
         return ""
 
     if len(description) > MAX_DESCRIPTION_LENGTH:
-        raise SecurityError(
-            f"Event description too long: {len(description)} chars "
-            f"(max {MAX_DESCRIPTION_LENGTH})"
-        )
+        msg = f"Event description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})"
+        raise SecurityError(msg)
 
     return description
 
@@ -308,10 +307,8 @@ def validate_location(location: str) -> str:
         return ""
 
     if len(location) > MAX_LOCATION_LENGTH:
-        raise SecurityError(
-            f"Location too long: {len(location)} chars "
-            f"(max {MAX_LOCATION_LENGTH})"
-        )
+        msg = f"Location too long: {len(location)} chars (max {MAX_LOCATION_LENGTH})"
+        raise SecurityError(msg)
 
     return location
 
@@ -324,9 +321,8 @@ def validate_color_id(color_id: str) -> str:
     color_id = color_id.strip()
 
     if color_id not in VALID_COLOR_IDS:
-        raise SecurityError(
-            f"Invalid color ID: {color_id}. Must be 1-11."
-        )
+        msg = f"Invalid color ID: {color_id}. Must be 1-11."
+        raise SecurityError(msg)
 
     return color_id
 
@@ -351,12 +347,12 @@ def validate_search_query(query: str) -> str:
     # Reject control characters
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in query for char in suspicious):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > MAX_QUERY_LENGTH:
-        raise SecurityError(
-            f"Query too long (max {MAX_QUERY_LENGTH} characters)"
-        )
+        msg = f"Query too long (max {MAX_QUERY_LENGTH} characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -364,9 +360,11 @@ def validate_search_query(query: str) -> str:
 def validate_max_results(max_results: int) -> int:
     """Validate max_results parameter."""
     if max_results < 1:
-        raise SecurityError("max_results must be at least 1")
+        msg = "max_results must be at least 1"
+        raise SecurityError(msg)
     if max_results > 2500:
-        raise SecurityError("max_results cannot exceed 2500")
+        msg = "max_results cannot exceed 2500"
+        raise SecurityError(msg)
     return max_results
 
 
@@ -374,31 +372,32 @@ def validate_send_updates(send_updates: str) -> str:
     """Validate sendUpdates parameter."""
     valid = {"all", "externalOnly", "none"}
     if send_updates not in valid:
-        raise SecurityError(
-            f"Invalid sendUpdates value: {send_updates}. "
-            f"Must be one of: {', '.join(sorted(valid))}"
+        msg = (
+            f"Invalid sendUpdates value: {send_updates}. Must be one of: {', '.join(sorted(valid))}"
         )
+        raise SecurityError(msg)
     return send_updates
 
 
 def validate_quick_add_text(text: str) -> str:
     """Validate quickAdd text input."""
     if not text or not isinstance(text, str):
-        raise SecurityError("Quick-add text is required")
+        msg = "Quick-add text is required"
+        raise SecurityError(msg)
 
     text = text.strip()
     if not text:
-        raise SecurityError("Quick-add text cannot be empty")
+        msg = "Quick-add text cannot be empty"
+        raise SecurityError(msg)
 
     if len(text) > MAX_SUMMARY_LENGTH:
-        raise SecurityError(
-            f"Quick-add text too long: {len(text)} chars "
-            f"(max {MAX_SUMMARY_LENGTH})"
-        )
+        msg = f"Quick-add text too long: {len(text)} chars (max {MAX_SUMMARY_LENGTH})"
+        raise SecurityError(msg)
 
     # Reject control chars except space/tab
     if any(ord(c) < 32 and c not in (" ", "\t") for c in text):
-        raise SecurityError("Quick-add text contains invalid control characters")
+        msg = "Quick-add text contains invalid control characters"
+        raise SecurityError(msg)
 
     return text
 
@@ -517,10 +516,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

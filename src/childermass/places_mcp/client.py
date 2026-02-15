@@ -33,9 +33,9 @@ from .security import (
     sanitize_error_message,
     validate_autocomplete_input,
     validate_ev_connector_types,
+    validate_language_code,
     validate_latitude,
     validate_longitude,
-    validate_language_code,
     validate_max_results,
     validate_min_rating,
     validate_photo_max_dimension,
@@ -48,6 +48,7 @@ from .security import (
     validate_rank_preference,
     validate_region_code,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -206,10 +207,11 @@ def _get_session(account: str | None = None) -> AuthorizedSession:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Places API accounts found. Run:\n"
                 "  python -m childermass.places_mcp.auth --account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
 
     if account in _sessions:
@@ -239,9 +241,8 @@ def _api_get(
 
     if resp.status_code != 200:
         error_body = resp.text[:500]
-        raise RuntimeError(
-            f"Places API error ({resp.status_code}): {error_body}"
-        )
+        msg = f"Places API error ({resp.status_code}): {error_body}"
+        raise RuntimeError(msg)
 
     return resp.json()
 
@@ -265,9 +266,8 @@ def _api_post(
 
     if resp.status_code != 200:
         error_body = resp.text[:500]
-        raise RuntimeError(
-            f"Places API error ({resp.status_code}): {error_body}"
-        )
+        msg = f"Places API error ({resp.status_code}): {error_body}"
+        raise RuntimeError(msg)
 
     return resp.json()
 
@@ -295,14 +295,16 @@ def _parse_place(data: dict) -> Place:
         for p in oh_data.get("periods", []):
             open_info = p.get("open", {})
             close_info = p.get("close", {})
-            periods.append(OpeningHoursPeriod(
-                open_day=str(open_info.get("day", "")),
-                open_hour=open_info.get("hour", 0),
-                open_minute=open_info.get("minute", 0),
-                close_day=str(close_info.get("day", "")),
-                close_hour=close_info.get("hour", 0),
-                close_minute=close_info.get("minute", 0),
-            ))
+            periods.append(
+                OpeningHoursPeriod(
+                    open_day=str(open_info.get("day", "")),
+                    open_hour=open_info.get("hour", 0),
+                    open_minute=open_info.get("minute", 0),
+                    close_day=str(close_info.get("day", "")),
+                    close_hour=close_info.get("hour", 0),
+                    close_minute=close_info.get("minute", 0),
+                )
+            )
         opening_hours = OpeningHours(
             open_now=oh_data.get("openNow"),
             weekday_text=oh_data.get("weekdayDescriptions", []),
@@ -312,32 +314,42 @@ def _parse_place(data: dict) -> Place:
     # Parse photos
     photos = []
     for photo_data in data.get("photos", []):
-        photos.append(PlacePhoto(
-            name=photo_data.get("name", ""),
-            width_px=photo_data.get("widthPx", 0),
-            height_px=photo_data.get("heightPx", 0),
-            author_attributions=[
-                {
-                    "displayName": a.get("displayName", ""),
-                    "uri": a.get("uri", ""),
-                }
-                for a in photo_data.get("authorAttributions", [])
-            ],
-        ))
+        photos.append(
+            PlacePhoto(
+                name=photo_data.get("name", ""),
+                width_px=photo_data.get("widthPx", 0),
+                height_px=photo_data.get("heightPx", 0),
+                author_attributions=[
+                    {
+                        "displayName": a.get("displayName", ""),
+                        "uri": a.get("uri", ""),
+                    }
+                    for a in photo_data.get("authorAttributions", [])
+                ],
+            )
+        )
 
     # Parse reviews
     reviews = []
     for rev_data in data.get("reviews", []):
         author_attr = rev_data.get("authorAttribution", {})
         original_text = rev_data.get("originalText") or rev_data.get("text", {})
-        reviews.append(PlaceReview(
-            author=author_attr.get("displayName", ""),
-            rating=rev_data.get("rating", 0.0),
-            text=original_text.get("text", "") if isinstance(original_text, dict) else str(original_text),
-            relative_publish_time=rev_data.get("relativePublishTimeDescription", ""),
-            publish_time=rev_data.get("publishTime", ""),
-            language_code=original_text.get("languageCode", "") if isinstance(original_text, dict) else "",
-        ))
+        reviews.append(
+            PlaceReview(
+                author=author_attr.get("displayName", ""),
+                rating=rev_data.get("rating", 0.0),
+                text=(
+                    original_text.get("text", "")
+                    if isinstance(original_text, dict)
+                    else str(original_text)
+                ),
+                relative_publish_time=rev_data.get("relativePublishTimeDescription", ""),
+                publish_time=rev_data.get("publishTime", ""),
+                language_code=(
+                    original_text.get("languageCode", "") if isinstance(original_text, dict) else ""
+                ),
+            )
+        )
 
     # Parse display name
     display_name_data = data.get("displayName", {})
@@ -349,34 +361,20 @@ def _parse_place(data: dict) -> Place:
 
     # Parse primary type display name
     ptdn = data.get("primaryTypeDisplayName", {})
-    primary_type_display = (
-        ptdn.get("text", "") if isinstance(ptdn, dict) else str(ptdn)
-    )
+    primary_type_display = ptdn.get("text", "") if isinstance(ptdn, dict) else str(ptdn)
 
     # Parse editorial / AI summaries
     editorial = data.get("editorialSummary", {})
-    editorial_text = (
-        editorial.get("text", "") if isinstance(editorial, dict) else ""
-    )
+    editorial_text = editorial.get("text", "") if isinstance(editorial, dict) else ""
     generative = data.get("generativeSummary", {})
     generative_text = ""
     if isinstance(generative, dict):
         overview = generative.get("overview", {})
-        generative_text = (
-            overview.get("text", "") if isinstance(overview, dict) else ""
-        )
+        generative_text = overview.get("text", "") if isinstance(overview, dict) else ""
     review_summary = data.get("reviewSummary", {})
-    review_summary_text = (
-        review_summary.get("text", "")
-        if isinstance(review_summary, dict)
-        else ""
-    )
+    review_summary_text = review_summary.get("text", "") if isinstance(review_summary, dict) else ""
     neighborhood = data.get("neighborhoodSummary", {})
-    neighborhood_text = (
-        neighborhood.get("text", "")
-        if isinstance(neighborhood, dict)
-        else ""
-    )
+    neighborhood_text = neighborhood.get("text", "") if isinstance(neighborhood, dict) else ""
 
     # Accessibility
     accessibility = data.get("accessibilityOptions", {})
@@ -418,18 +416,10 @@ def _parse_place(data: dict) -> Place:
         good_for_groups=data.get("goodForGroups"),
         allows_dogs=data.get("allowsDogs"),
         restroom=data.get("restroom"),
-        wheelchair_accessible_parking=accessibility.get(
-            "wheelchairAccessibleParking"
-        ),
-        wheelchair_accessible_entrance=accessibility.get(
-            "wheelchairAccessibleEntrance"
-        ),
-        wheelchair_accessible_restroom=accessibility.get(
-            "wheelchairAccessibleRestroom"
-        ),
-        wheelchair_accessible_seating=accessibility.get(
-            "wheelchairAccessibleSeating"
-        ),
+        wheelchair_accessible_parking=accessibility.get("wheelchairAccessibleParking"),
+        wheelchair_accessible_entrance=accessibility.get("wheelchairAccessibleEntrance"),
+        wheelchair_accessible_restroom=accessibility.get("wheelchairAccessibleRestroom"),
+        wheelchair_accessible_seating=accessibility.get("wheelchairAccessibleSeating"),
         parking_options=data.get("parkingOptions", {}),
         payment_options=data.get("paymentOptions", {}),
         ev_charge_options=data.get("evChargeOptions", {}),
@@ -460,7 +450,7 @@ def _parse_autocomplete_suggestion(data: dict) -> AutocompleteSuggestion:
             types=place_pred.get("types", []),
             distance_meters=place_pred.get("distanceMeters"),
         )
-    elif query_pred:
+    if query_pred:
         text_data = query_pred.get("text", {})
         return AutocompleteSuggestion(
             type="query",
@@ -540,19 +530,28 @@ def _place_to_dict(place: Place) -> dict:
     # Photos (just names for separate retrieval)
     if place.photos:
         result["photos"] = [
-            {"name": p.name, "width": p.width_px, "height": p.height_px}
-            for p in place.photos
+            {"name": p.name, "width": p.width_px, "height": p.height_px} for p in place.photos
         ]
 
     # Boolean attributes – only include non-None
     attrs: dict[str, bool] = {}
     for attr_name in [
-        "delivery", "dine_in", "takeout", "reservable",
-        "serves_breakfast", "serves_lunch", "serves_dinner",
-        "serves_beer", "serves_wine", "serves_cocktails",
-        "serves_vegetarian_food", "outdoor_seating",
-        "good_for_children", "good_for_groups",
-        "allows_dogs", "restroom",
+        "delivery",
+        "dine_in",
+        "takeout",
+        "reservable",
+        "serves_breakfast",
+        "serves_lunch",
+        "serves_dinner",
+        "serves_beer",
+        "serves_wine",
+        "serves_cocktails",
+        "serves_vegetarian_food",
+        "outdoor_seating",
+        "good_for_children",
+        "good_for_groups",
+        "allows_dogs",
+        "restroom",
     ]:
         val = getattr(place, attr_name, None)
         if val is not None:
@@ -691,20 +690,29 @@ def text_search(
         for place_data in data.get("places", []):
             places.append(_parse_place(place_data))
 
-        audit_log("text_search", acct_key, {
-            "query": query,
-            "results": len(places),
-        })
+        audit_log(
+            "text_search",
+            acct_key,
+            {
+                "query": query,
+                "results": len(places),
+            },
+        )
 
         return places
 
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("text_search", acct_key, {
-            "query": query,
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "text_search",
+            acct_key,
+            {
+                "query": query,
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -795,20 +803,29 @@ def nearby_search(
         for place_data in data.get("places", []):
             places.append(_parse_place(place_data))
 
-        audit_log("nearby_search", acct_key, {
-            "location": f"{latitude},{longitude}",
-            "radius": radius,
-            "results": len(places),
-        })
+        audit_log(
+            "nearby_search",
+            acct_key,
+            {
+                "location": f"{latitude},{longitude}",
+                "radius": radius,
+                "results": len(places),
+            },
+        )
 
         return places
 
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("nearby_search", acct_key, {
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "nearby_search",
+            acct_key,
+            {
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -868,10 +885,15 @@ def get_place_details(
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("place_details", acct_key, {
-            "place_id": place_id,
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "place_details",
+            acct_key,
+            {
+                "place_id": place_id,
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -940,9 +962,7 @@ def autocomplete(
     if included_primary_types:
         body["includedPrimaryTypes"] = included_primary_types
     if included_region_codes:
-        validated_regions = [
-            validate_region_code(rc) for rc in included_region_codes
-        ]
+        validated_regions = [validate_region_code(rc) for rc in included_region_codes]
         body["includedRegionCodes"] = validated_regions
 
     # Location bias
@@ -972,29 +992,37 @@ def autocomplete(
 
         if resp.status_code != 200:
             error_body = resp.text[:500]
-            raise RuntimeError(
-                f"Places API error ({resp.status_code}): {error_body}"
-            )
+            msg = f"Places API error ({resp.status_code}): {error_body}"
+            raise RuntimeError(msg)
 
         data = resp.json()
         suggestions = []
         for suggestion in data.get("suggestions", []):
             suggestions.append(_parse_autocomplete_suggestion(suggestion))
 
-        audit_log("autocomplete", acct_key, {
-            "input": input_text,
-            "results": len(suggestions),
-        })
+        audit_log(
+            "autocomplete",
+            acct_key,
+            {
+                "input": input_text,
+                "results": len(suggestions),
+            },
+        )
 
         return suggestions
 
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("autocomplete", acct_key, {
-            "input": input_text,
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "autocomplete",
+            acct_key,
+            {
+                "input": input_text,
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -1042,26 +1070,34 @@ def get_place_photo_uri(
 
         if resp.status_code != 200:
             error_body = resp.text[:500]
-            raise RuntimeError(
-                f"Places API error ({resp.status_code}): {error_body}"
-            )
+            msg = f"Places API error ({resp.status_code}): {error_body}"
+            raise RuntimeError(msg)
 
         data = resp.json()
         photo_uri = data.get("photoUri", "")
 
-        audit_log("photo", acct_key, {
-            "photo": photo_resource_name,
-        })
+        audit_log(
+            "photo",
+            acct_key,
+            {
+                "photo": photo_resource_name,
+            },
+        )
 
         return photo_uri
 
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("photo", acct_key, {
-            "photo": photo_resource_name,
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "photo",
+            acct_key,
+            {
+                "photo": photo_resource_name,
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -1213,7 +1249,8 @@ def find_ev_chargers(
         ev_options["connectorTypes"] = connector_types
     if min_charging_rate_kw is not None:
         if min_charging_rate_kw < 0:
-            raise SecurityError("Minimum charging rate must be non-negative")
+            msg = "Minimum charging rate must be non-negative"
+            raise SecurityError(msg)
         ev_options["minimumChargingRateKw"] = min_charging_rate_kw
     if ev_options:
         body["evOptions"] = ev_options
@@ -1233,17 +1270,26 @@ def find_ev_chargers(
         for place_data in data.get("places", []):
             places.append(_parse_place(place_data))
 
-        audit_log("find_ev_chargers", acct_key, {
-            "location": f"{latitude},{longitude}",
-            "results": len(places),
-        })
+        audit_log(
+            "find_ev_chargers",
+            acct_key,
+            {
+                "location": f"{latitude},{longitude}",
+                "results": len(places),
+            },
+        )
 
         return places
 
     except SecurityError:
         raise
     except Exception as e:
-        audit_log("find_ev_chargers", acct_key, {
-            "error": sanitize_error_message(e),
-        }, success=False)
+        audit_log(
+            "find_ev_chargers",
+            acct_key,
+            {
+                "error": sanitize_error_message(e),
+            },
+            success=False,
+        )
         raise RuntimeError(sanitize_error_message(e)) from None

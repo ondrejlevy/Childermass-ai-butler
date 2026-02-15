@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-network")
 
@@ -403,7 +404,8 @@ def network_update_firewall_policy(
             action=action or None,
             logging_enabled=(
                 {"true": True, "false": False}.get(logging_enabled.lower())
-                if logging_enabled else None
+                if logging_enabled
+                else None
             ),
         )
         return asdict(policy)

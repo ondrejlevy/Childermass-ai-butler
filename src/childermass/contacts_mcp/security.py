@@ -20,8 +20,6 @@ import validators
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -86,8 +84,18 @@ VALID_EMAIL_TYPES = {"home", "work", "other"}
 
 # Valid phone types
 VALID_PHONE_TYPES = {
-    "home", "work", "mobile", "homeFax", "workFax", "otherFax",
-    "pager", "workMobile", "workPager", "main", "googleVoice", "other",
+    "home",
+    "work",
+    "mobile",
+    "homeFax",
+    "workFax",
+    "otherFax",
+    "pager",
+    "workMobile",
+    "workPager",
+    "main",
+    "googleVoice",
+    "other",
 }
 
 
@@ -104,22 +112,23 @@ def validate_resource_name(resource_name: str) -> str:
     Returns normalised resource name. Raises SecurityError on invalid input.
     """
     if not resource_name or not isinstance(resource_name, str):
-        raise SecurityError("Resource name is required")
+        msg = "Resource name is required"
+        raise SecurityError(msg)
 
     resource_name = resource_name.strip()
 
     # Check for injection characters
     if any(char in resource_name for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError(
-            "Resource name contains invalid control characters"
-        )
+        msg = "Resource name contains invalid control characters"
+        raise SecurityError(msg)
 
     # Must match people/{id} or people/me
     if not re.match(r"^people/[a-zA-Z0-9]+$", resource_name):
-        raise SecurityError(
+        msg = (
             f"Invalid resource name format: {resource_name}. "
             "Expected format: people/{{person_id}} or people/me"
         )
+        raise SecurityError(msg)
 
     return resource_name
 
@@ -131,20 +140,21 @@ def validate_group_resource_name(resource_name: str) -> str:
     Format: "contactGroups/{contactGroupId}"
     """
     if not resource_name or not isinstance(resource_name, str):
-        raise SecurityError("Contact group resource name is required")
+        msg = "Contact group resource name is required"
+        raise SecurityError(msg)
 
     resource_name = resource_name.strip()
 
     if any(char in resource_name for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError(
-            "Contact group resource name contains invalid control characters"
-        )
+        msg = "Contact group resource name contains invalid control characters"
+        raise SecurityError(msg)
 
     if not re.match(r"^contactGroups/[a-zA-Z0-9_-]+$", resource_name):
-        raise SecurityError(
+        msg = (
             f"Invalid contact group resource name: {resource_name}. "
             "Expected format: contactGroups/{{groupId}}"
         )
+        raise SecurityError(msg)
 
     return resource_name
 
@@ -156,7 +166,8 @@ def validate_email(email: str) -> str:
     Returns normalised email address. Raises SecurityError on invalid input.
     """
     if not email or not isinstance(email, str):
-        raise SecurityError("Email address is required")
+        msg = "Email address is required"
+        raise SecurityError(msg)
 
     email = email.strip()
 
@@ -170,10 +181,12 @@ def validate_email(email: str) -> str:
 
     # Check for injection characters
     if any(char in email_lower for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Email contains invalid control characters")
+        msg = "Email contains invalid control characters"
+        raise SecurityError(msg)
 
     if not validators.email(email_lower):
-        raise SecurityError(f"Invalid email address format: {email}")
+        msg = f"Invalid email address format: {email}"
+        raise SecurityError(msg)
 
     return email_lower
 
@@ -185,25 +198,26 @@ def validate_phone_number(phone: str) -> str:
     Accepts digits, spaces, dashes, parentheses, plus sign, and dots.
     """
     if not phone or not isinstance(phone, str):
-        raise SecurityError("Phone number is required")
+        msg = "Phone number is required"
+        raise SecurityError(msg)
 
     phone = phone.strip()
 
     if any(char in phone for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Phone number contains invalid control characters")
+        msg = "Phone number contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(phone) > MAX_PHONE_LENGTH:
-        raise SecurityError(
-            f"Phone number too long: {len(phone)} chars "
-            f"(max {MAX_PHONE_LENGTH})"
-        )
+        msg = f"Phone number too long: {len(phone)} chars (max {MAX_PHONE_LENGTH})"
+        raise SecurityError(msg)
 
     # Allow digits, spaces, dashes, parens, dots, plus, hash, star
     if not re.match(r"^[0-9\s\-\(\)\+\.\#\*]+$", phone):
-        raise SecurityError(
+        msg = (
             f"Invalid phone number format: {phone}. "
             "Only digits, spaces, +, -, (, ), ., #, * are allowed."
         )
+        raise SecurityError(msg)
 
     return phone
 
@@ -215,22 +229,21 @@ def validate_contact_name(name: str) -> str:
     Returns validated name. Raises SecurityError on invalid input.
     """
     if not name or not isinstance(name, str):
-        raise SecurityError("Contact name is required")
+        msg = "Contact name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
     if not name:
-        raise SecurityError("Contact name cannot be empty")
+        msg = "Contact name cannot be empty"
+        raise SecurityError(msg)
 
     if any(c in name for c in ["\r", "\0"]):
-        raise SecurityError(
-            "Contact name contains invalid control characters"
-        )
+        msg = "Contact name contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(name) > MAX_NAME_LENGTH:
-        raise SecurityError(
-            f"Contact name too long: {len(name)} chars "
-            f"(max {MAX_NAME_LENGTH})"
-        )
+        msg = f"Contact name too long: {len(name)} chars (max {MAX_NAME_LENGTH})"
+        raise SecurityError(msg)
 
     return name
 
@@ -245,9 +258,8 @@ def validate_notes(notes: str) -> str:
         return ""
 
     if len(notes) > MAX_NOTES_LENGTH:
-        raise SecurityError(
-            f"Notes too long: {len(notes)} chars (max {MAX_NOTES_LENGTH})"
-        )
+        msg = f"Notes too long: {len(notes)} chars (max {MAX_NOTES_LENGTH})"
+        raise SecurityError(msg)
 
     return notes
 
@@ -260,15 +272,12 @@ def validate_organization(org: str) -> str:
     org = org.strip()
 
     if any(c in org for c in ["\r", "\0"]):
-        raise SecurityError(
-            "Organization name contains invalid control characters"
-        )
+        msg = "Organization name contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(org) > MAX_ORGANIZATION_LENGTH:
-        raise SecurityError(
-            f"Organization name too long: {len(org)} chars "
-            f"(max {MAX_ORGANIZATION_LENGTH})"
-        )
+        msg = f"Organization name too long: {len(org)} chars (max {MAX_ORGANIZATION_LENGTH})"
+        raise SecurityError(msg)
 
     return org
 
@@ -281,15 +290,12 @@ def validate_job_title(title: str) -> str:
     title = title.strip()
 
     if any(c in title for c in ["\r", "\0"]):
-        raise SecurityError(
-            "Job title contains invalid control characters"
-        )
+        msg = "Job title contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(title) > MAX_TITLE_LENGTH:
-        raise SecurityError(
-            f"Job title too long: {len(title)} chars "
-            f"(max {MAX_TITLE_LENGTH})"
-        )
+        msg = f"Job title too long: {len(title)} chars (max {MAX_TITLE_LENGTH})"
+        raise SecurityError(msg)
 
     return title
 
@@ -302,13 +308,12 @@ def validate_address(address: str) -> str:
     address = address.strip()
 
     if "\0" in address:
-        raise SecurityError("Address contains null bytes")
+        msg = "Address contains null bytes"
+        raise SecurityError(msg)
 
     if len(address) > MAX_ADDRESS_LENGTH:
-        raise SecurityError(
-            f"Address too long: {len(address)} chars "
-            f"(max {MAX_ADDRESS_LENGTH})"
-        )
+        msg = f"Address too long: {len(address)} chars (max {MAX_ADDRESS_LENGTH})"
+        raise SecurityError(msg)
 
     return address
 
@@ -321,15 +326,16 @@ def validate_url(url: str) -> str:
     url = url.strip()
 
     if any(char in url for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("URL contains invalid control characters")
+        msg = "URL contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(url) > MAX_URL_LENGTH:
-        raise SecurityError(
-            f"URL too long: {len(url)} chars (max {MAX_URL_LENGTH})"
-        )
+        msg = f"URL too long: {len(url)} chars (max {MAX_URL_LENGTH})"
+        raise SecurityError(msg)
 
     if not validators.url(url):
-        raise SecurityError(f"Invalid URL format: {url}")
+        msg = f"Invalid URL format: {url}"
+        raise SecurityError(msg)
 
     return url
 
@@ -342,7 +348,8 @@ def validate_birthday(birthday: str) -> str:
     Returns the normalised string.
     """
     if not birthday or not isinstance(birthday, str):
-        raise SecurityError("Birthday is required")
+        msg = "Birthday is required"
+        raise SecurityError(msg)
 
     birthday = birthday.strip()
 
@@ -354,10 +361,8 @@ def validate_birthday(birthday: str) -> str:
     if re.match(r"^\d{2}-\d{2}$", birthday):
         return birthday
 
-    raise SecurityError(
-        f"Invalid birthday format: {birthday}. "
-        "Expected YYYY-MM-DD or MM-DD"
-    )
+    msg = f"Invalid birthday format: {birthday}. Expected YYYY-MM-DD or MM-DD"
+    raise SecurityError(msg)
 
 
 def validate_search_query(query: str) -> str:
@@ -368,12 +373,12 @@ def validate_search_query(query: str) -> str:
     # Reject control characters
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in query for char in suspicious):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > MAX_QUERY_LENGTH:
-        raise SecurityError(
-            f"Query too long (max {MAX_QUERY_LENGTH} characters)"
-        )
+        msg = f"Query too long (max {MAX_QUERY_LENGTH} characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -392,10 +397,11 @@ def validate_person_fields(fields: str) -> str:
 
     invalid = [f for f in field_list if f not in VALID_PERSON_FIELDS]
     if invalid:
-        raise SecurityError(
+        msg = (
             f"Invalid person fields: {', '.join(invalid)}. "
             f"Valid fields: {', '.join(sorted(VALID_PERSON_FIELDS))}"
         )
+        raise SecurityError(msg)
 
     return ",".join(field_list)
 
@@ -403,22 +409,21 @@ def validate_person_fields(fields: str) -> str:
 def validate_group_name(name: str) -> str:
     """Validate contact group name."""
     if not name or not isinstance(name, str):
-        raise SecurityError("Contact group name is required")
+        msg = "Contact group name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
     if not name:
-        raise SecurityError("Contact group name cannot be empty")
+        msg = "Contact group name cannot be empty"
+        raise SecurityError(msg)
 
     if any(c in name for c in ["\r", "\0"]):
-        raise SecurityError(
-            "Contact group name contains invalid control characters"
-        )
+        msg = "Contact group name contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(name) > MAX_GROUP_NAME_LENGTH:
-        raise SecurityError(
-            f"Contact group name too long: {len(name)} chars "
-            f"(max {MAX_GROUP_NAME_LENGTH})"
-        )
+        msg = f"Contact group name too long: {len(name)} chars (max {MAX_GROUP_NAME_LENGTH})"
+        raise SecurityError(msg)
 
     return name
 
@@ -426,22 +431,23 @@ def validate_group_name(name: str) -> str:
 def validate_max_results(max_results: int, limit: int = 1000) -> int:
     """Validate max_results parameter."""
     if max_results < 1:
-        raise SecurityError("max_results must be at least 1")
+        msg = "max_results must be at least 1"
+        raise SecurityError(msg)
     if max_results > limit:
-        raise SecurityError(f"max_results cannot exceed {limit}")
+        msg = f"max_results cannot exceed {limit}"
+        raise SecurityError(msg)
     return max_results
 
 
 def validate_etag(etag: str) -> str:
     """Validate etag for optimistic concurrency."""
     if not etag or not isinstance(etag, str):
-        raise SecurityError(
-            "etag is required for update operations. "
-            "Get it from contacts_get first."
-        )
+        msg = "etag is required for update operations. Get it from contacts_get first."
+        raise SecurityError(msg)
     etag = etag.strip()
     if not etag:
-        raise SecurityError("etag cannot be empty")
+        msg = "etag cannot be empty"
+        raise SecurityError(msg)
     return etag
 
 
@@ -558,10 +564,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

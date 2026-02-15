@@ -19,6 +19,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
+
 logger = logging.getLogger(__name__)
 
 # Places API (New) requires an API key for most operations but OAuth2 is
@@ -78,9 +79,7 @@ def get_token_path(account: str | None = None) -> Path:
 
 def get_credentials_path() -> Path:
     """Get OAuth credentials path from env or default."""
-    return Path(
-        os.getenv("PLACES_CREDENTIALS_PATH", str(DEFAULT_CREDENTIALS_PATH))
-    )
+    return Path(os.getenv("PLACES_CREDENTIALS_PATH", str(DEFAULT_CREDENTIALS_PATH)))
 
 
 def list_authenticated_accounts() -> list[str]:
@@ -134,13 +133,12 @@ def _save_to_keyring(token_json: str, account: str) -> bool:
         index: list[str] = json.loads(index_raw) if index_raw else []
         if account not in index:
             index.append(account)
-            keyring.set_password(
-                KEYRING_SERVICE, "__accounts__", json.dumps(index)
-            )
-        return True
+            keyring.set_password(KEYRING_SERVICE, "__accounts__", json.dumps(index))
     except Exception as e:
         logger.warning("Keyring save failed: %s", e)
         return False
+    else:
+        return True
 
 
 def _load_from_keyring(account: str) -> Credentials | None:
@@ -154,9 +152,10 @@ def _load_from_keyring(account: str) -> Credentials | None:
         token_json = keyring.get_password(KEYRING_SERVICE, account)
         if not token_json:
             return None
-        return Credentials.from_authorized_user_info(
+        creds: Credentials = Credentials.from_authorized_user_info(
             json.loads(token_json), SCOPES
         )
+        return creds
     except Exception as e:
         logger.warning("Keyring load failed: %s", e)
         return None
@@ -177,12 +176,11 @@ def _delete_from_keyring(account: str) -> bool:
             index = json.loads(index_raw)
             if account in index:
                 index.remove(account)
-                keyring.set_password(
-                    KEYRING_SERVICE, "__accounts__", json.dumps(index)
-                )
-        return True
+                keyring.set_password(KEYRING_SERVICE, "__accounts__", json.dumps(index))
     except Exception:
         return False
+    else:
+        return True
 
 
 def load_credentials(account: str | None = None) -> Credentials | None:
@@ -204,18 +202,18 @@ def load_credentials(account: str | None = None) -> Credentials | None:
         return None
 
     try:
-        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+        file_creds: Credentials = Credentials.from_authorized_user_file(str(token_path), SCOPES)
 
         # Migrate to keyring if possible
-        if _is_keyring_available() and creds:
+        if _is_keyring_available() and file_creds:
             token_json = token_path.read_text()
             if _save_to_keyring(token_json, acct_key):
                 logger.info("Migrated token for %s to keyring", acct_key)
                 token_path.chmod(0o600)
-
-        return creds
     except Exception:
         return None
+    else:
+        return file_creds
 
 
 def save_credentials(creds: Credentials, account: str | None = None) -> None:
@@ -240,11 +238,9 @@ def save_credentials(creds: Credentials, account: str | None = None) -> None:
     token_path.chmod(0o600)
 
     if saved_to_keyring:
-        print(f"✓ Token stored in system keyring ({KEYRING_SERVICE})")
-        print(f"  Backup saved to {token_path}")
+        pass
     else:
-        print(f"⚠ Keyring unavailable, token saved to {token_path}")
-        print("  Consider installing keyring backend for better security")
+        pass
 
 
 def get_authenticated_credentials(account: str | None = None) -> Credentials:
@@ -266,10 +262,11 @@ def get_authenticated_credentials(account: str | None = None) -> Credentials:
         return creds
 
     account_msg = f" for {account}" if account else ""
-    raise RuntimeError(
+    msg = (
         f"No valid tokens found{account_msg}. Run authentication first with:\n"
         f"  python -m childermass.places_mcp.auth --account={account or 'your@email.com'}"
     )
+    raise RuntimeError(msg)
 
 
 def authenticate(account: str | None = None) -> None:
@@ -277,44 +274,22 @@ def authenticate(account: str | None = None) -> None:
     credentials_path = get_credentials_path()
 
     if not credentials_path.exists():
-        print(f"\n✗ OAuth credentials not found at {credentials_path}")
-        print("\nTo set up Places API access:")
-        print("1. Go to https://console.cloud.google.com/")
-        print("2. Create a project and enable Places API (New)")
-        print("3. Create OAuth 2.0 credentials (Desktop app)")
-        print("4. Download the JSON and save it to:")
-        print(f"   {credentials_path}")
         return
-
-    acct_label = account or "default"
-    print(
-        f"\n=== Places API OAuth2 Authentication"
-        f"{' for ' + account if account else ''} ==="
-    )
 
     # Check if already authenticated
     creds = load_credentials(account)
     if creds and creds.valid:
-        print(f"\n✓ Account {acct_label} is already authenticated!")
-        storage = "system keyring" if _is_keyring_available() else "file"
-        print(f"  Storage: {storage}")
-        print(f"  Token path: {get_token_path(account)}")
+        "system keyring" if _is_keyring_available() else "file"
         return
 
     if not account:
-        print(
-            "⚠ No account specified. Use --account=your@email.com "
-            "for multi-account setup.\n"
-        )
+        pass
 
     # Run OAuth flow
-    flow = InstalledAppFlow.from_client_secrets_file(
-        str(credentials_path), SCOPES
-    )
+    flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
 
-    print("\nOpening browser for authentication...")
     if account:
-        print(f"Please sign in with: {account}")
+        pass
 
     creds = flow.run_local_server(
         port=0,
@@ -323,10 +298,6 @@ def authenticate(account: str | None = None) -> None:
     )
 
     save_credentials(creds, account)
-
-    print("\n=== ✓ Authentication successful! ===")
-    print(f"\nTokens saved for: {acct_label}")
-    print("You can now use the Places MCP server.\n")
 
 
 def revoke_account(account: str) -> None:
@@ -339,14 +310,10 @@ def revoke_account(account: str) -> None:
     if token_path.exists():
         token_path.unlink()
 
-    print(f"✓ Tokens revoked for {acct_key}")
-
 
 def migrate_tokens_to_keyring() -> None:
     """Migrate all file-based tokens to system keyring."""
     if not _is_keyring_available():
-        print("✗ System keyring not available. Install a keyring backend:")
-        print("  pip install keyring")
         return
 
     migrated = 0
@@ -357,11 +324,8 @@ def migrate_tokens_to_keyring() -> None:
                 token_json = token_file.read_text()
                 if _save_to_keyring(token_json, email):
                     migrated += 1
-                    print(f"  ✓ Migrated {email}")
-            except Exception as e:
-                print(f"  ✗ Failed to migrate {email}: {e}")
-
-    print(f"\n✓ Migrated {migrated} token(s) to system keyring")
+            except Exception:
+                pass
 
 
 def main() -> None:
@@ -402,16 +366,12 @@ def main() -> None:
 
     if args.list:
         accounts = list_authenticated_accounts()
-        storage = (
-            "keyring + file" if _is_keyring_available() else "file only"
-        )
-        print(f"Storage backend: {storage}\n")
+        ("keyring + file" if _is_keyring_available() else "file only")
         if accounts:
-            print("Authenticated accounts:")
-            for acc in accounts:
-                print(f"  • {acc}")
+            for _acc in accounts:
+                pass
         else:
-            print("No authenticated accounts found.")
+            pass
         return
 
     if args.revoke:

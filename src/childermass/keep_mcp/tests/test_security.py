@@ -369,9 +369,7 @@ class TestSanitizeErrorMessage:
         assert "supersecret123" not in msg
 
     def test_removes_file_paths(self):
-        msg = sanitize_error_message(
-            Exception("Error reading /home/user/keep-token.json")
-        )
+        msg = sanitize_error_message(Exception("Error reading /home/user/keep-token.json"))
         assert "keep-token.json" not in msg
 
     def test_preserves_safe_messages(self):
@@ -451,12 +449,8 @@ class TestRateLimiter:
 class TestAuditLog:
     def test_writes_json_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "audit.log"
-        monkeypatch.setattr(
-            "childermass.keep_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.keep_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.keep_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.keep_mcp.security._AUDIT_DIR", tmp_path)
         # Reset logger handlers
         import logging
 
@@ -477,12 +471,8 @@ class TestAuditLog:
 
     def test_failure_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "audit.log"
-        monkeypatch.setattr(
-            "childermass.keep_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.keep_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.keep_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.keep_mcp.security._AUDIT_DIR", tmp_path)
         import logging
 
         logger = logging.getLogger("childermass.keep_mcp.audit")
@@ -513,12 +503,8 @@ class TestAuthKeyring:
 
     def test_list_authenticated_accounts_empty(self, tmp_path, monkeypatch):
         """With no tokens, should return empty list."""
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path / "empty"
-        )
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth._keyring_available", False
-        )
+        monkeypatch.setattr("childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path / "empty")
+        monkeypatch.setattr("childermass.keep_mcp.auth._keyring_available", False)
 
         from childermass.keep_mcp.auth import list_authenticated_accounts
 
@@ -539,12 +525,8 @@ class TestAuthKeyring:
 
     def test_save_and_load_master_token(self, tmp_path, monkeypatch):
         """Test file-based token save/load round-trip."""
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path
-        )
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth._keyring_available", False
-        )
+        monkeypatch.setattr("childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path)
+        monkeypatch.setattr("childermass.keep_mcp.auth._keyring_available", False)
 
         from childermass.keep_mcp.auth import load_master_token, save_master_token
 
@@ -554,12 +536,8 @@ class TestAuthKeyring:
         assert token == "test_token_123"
 
     def test_load_nonexistent_returns_none(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path
-        )
-        monkeypatch.setattr(
-            "childermass.keep_mcp.auth._keyring_available", False
-        )
+        monkeypatch.setattr("childermass.keep_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path)
+        monkeypatch.setattr("childermass.keep_mcp.auth._keyring_available", False)
 
         from childermass.keep_mcp.auth import load_master_token
 

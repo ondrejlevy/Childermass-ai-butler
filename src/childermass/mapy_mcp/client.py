@@ -15,19 +15,19 @@ import requests
 from .auth import get_api_key
 from .security import (
     SecurityError,
-    validate_query,
-    validate_coordinates,
-    validate_language,
-    validate_route_type,
-    validate_geocode_type,
-    validate_limit,
-    validate_waypoints,
-    validate_positions,
-    validate_departure,
-    validate_geometry_format,
+    audit_log,
     rate_limiter,
     sanitize_error_message,
-    audit_log,
+    validate_coordinates,
+    validate_departure,
+    validate_geocode_type,
+    validate_geometry_format,
+    validate_language,
+    validate_limit,
+    validate_positions,
+    validate_query,
+    validate_route_type,
+    validate_waypoints,
 )
 
 
@@ -44,6 +44,7 @@ CACHE_TTL = 900  # 15 minutes in seconds
 @dataclass
 class RegionalEntity:
     """Single level in the regional structure."""
+
     name: str
     type: str
     iso_code: str | None = None
@@ -52,6 +53,7 @@ class RegionalEntity:
 @dataclass
 class GeocodedResult:
     """A single geocoded entity."""
+
     name: str
     label: str
     latitude: float
@@ -65,6 +67,7 @@ class GeocodedResult:
 @dataclass
 class RoutePart:
     """Individual route segment between waypoints."""
+
     length: float  # meters
     duration: float  # seconds
 
@@ -72,6 +75,7 @@ class RoutePart:
 @dataclass
 class RoutePoint:
     """Start, end, or waypoint metadata."""
+
     original_lat: float
     original_lon: float
     mapped_lat: float
@@ -84,6 +88,7 @@ class RoutePoint:
 @dataclass
 class Route:
     """Planned route result."""
+
     length: float  # meters
     duration: float  # seconds
     geometry: Any = None  # GeoJSON or polyline depending on format
@@ -94,6 +99,7 @@ class Route:
 @dataclass
 class MatrixEntry:
     """Single matrix routing result between one start and one end."""
+
     length: float  # meters
     duration: float  # seconds
 
@@ -101,12 +107,14 @@ class MatrixEntry:
 @dataclass
 class MatrixResult:
     """Matrix routing response."""
+
     matrix: list[list[MatrixEntry]] = field(default_factory=list)
 
 
 @dataclass
 class ElevationResult:
     """Elevation data for a single point."""
+
     latitude: float
     longitude: float
     elevation: float  # meters
@@ -115,6 +123,7 @@ class ElevationResult:
 @dataclass
 class TimezoneInfo:
     """Timezone information."""
+
     timezone_name: str
     current_time_abbreviation: str
     standard_time_abbreviation: str
@@ -143,8 +152,7 @@ class ResponseCache:
             value, timestamp = self.cache[key]
             if time.time() - timestamp < self.ttl:
                 return value
-            else:
-                del self.cache[key]
+            del self.cache[key]
         return None
 
     def set(self, key: str, value: Any) -> None:
@@ -174,10 +182,12 @@ class MapyClient:
         self.api_key = api_key
         self.cache = ResponseCache(ttl=cache_ttl)
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Childermass-Mapy-MCP/1.0.0",
-            "X-Mapy-Api-Key": self.api_key,
-        })
+        self.session.headers.update(
+            {
+                "User-Agent": "Childermass-Mapy-MCP/1.0.0",
+                "X-Mapy-Api-Key": self.api_key,
+            }
+        )
 
     def _make_request(
         self,
@@ -202,37 +212,38 @@ class MapyClient:
         try:
             response = self.session.get(url, params=params, timeout=10)
             response.raise_for_status()
-            return response.json()
+            json_data: dict[str, Any] | list[Any] = response.json()
+            return json_data
         except requests.exceptions.HTTPError as e:
             if e.response is not None:
                 status = e.response.status_code
                 if status == 401:
-                    raise SecurityError(
-                        "API key is missing. Please check your Mapy.com API key."
-                    )
-                elif status == 403:
-                    raise SecurityError(
+                    msg = "API key is missing. Please check your Mapy.com API key."
+                    raise SecurityError(msg)
+                if status == 403:
+                    msg = (
                         "Invalid API key or service not enabled. "
                         "Please verify your Mapy.com API key."
                     )
-                elif status == 404:
-                    raise SecurityError("Resource not found.")
-                elif status == 429:
-                    raise SecurityError(
-                        "API rate limit exceeded. Please try again later."
-                    )
-                else:
-                    try:
-                        error_data = e.response.json()
-                        message = error_data.get("message", str(e))
-                    except Exception:
-                        message = str(e)
-                    raise SecurityError(
-                        f"API error ({status}): {sanitize_error_message(Exception(message))}"
-                    )
-            raise SecurityError(f"HTTP error: {sanitize_error_message(e)}")
+                    raise SecurityError(msg)
+                if status == 404:
+                    msg = "Resource not found."
+                    raise SecurityError(msg)
+                if status == 429:
+                    msg = "API rate limit exceeded. Please try again later."
+                    raise SecurityError(msg)
+                try:
+                    error_data = e.response.json()
+                    message = error_data.get("message", str(e))
+                except Exception:
+                    message = str(e)
+                msg = f"API error ({status}): {sanitize_error_message(Exception(message))}"
+                raise SecurityError(msg)
+            msg = f"HTTP error: {sanitize_error_message(e)}"
+            raise SecurityError(msg) from e
         except requests.exceptions.RequestException as e:
-            raise SecurityError(f"Network error: {sanitize_error_message(e)}")
+            msg = f"Network error: {sanitize_error_message(e)}"
+            raise SecurityError(msg) from e
 
     # ------------------------------------------------------------------ #
     # Geocoding
@@ -270,6 +281,10 @@ class MapyClient:
         cached = self.cache.get(cache_key)
         if cached is not None:
             audit_log("geocode", details={"query": query, "cached": True})
+            # Type guard for cached value
+            if not isinstance(cached, list):
+                msg = "Invalid cached geocode results"
+                raise SecurityError(msg)
             return cached
 
         params: dict[str, Any] = {"query": query, "lang": lang, "limit": limit}
@@ -358,6 +373,10 @@ class MapyClient:
         cached = self.cache.get(cache_key)
         if cached is not None:
             audit_log("reverse_geocode", details={"lat": lat, "lon": lon, "cached": True})
+            # Type guard for cached value
+            if not isinstance(cached, list):
+                msg = "Invalid cached reverse geocode results"
+                raise SecurityError(msg)
             return cached
 
         params: dict[str, Any] = {"lon": lon, "lat": lat, "lang": lang}
@@ -365,7 +384,10 @@ class MapyClient:
         results = self._parse_rgeocode_results(data)
 
         self.cache.set(cache_key, results)
-        audit_log("reverse_geocode", details={"lat": lat, "lon": lon, "count": len(results), "cached": False})
+        audit_log(
+            "reverse_geocode",
+            details={"lat": lat, "lon": lon, "count": len(results), "cached": False},
+        )
         return results
 
     # ------------------------------------------------------------------ #
@@ -436,13 +458,16 @@ class MapyClient:
 
         route = self._parse_route(data)
 
-        audit_log("plan_route", details={
-            "start": f"{start_lat},{start_lon}",
-            "end": f"{end_lat},{end_lon}",
-            "route_type": route_type,
-            "length_m": route.length,
-            "duration_s": route.duration,
-        })
+        audit_log(
+            "plan_route",
+            details={
+                "start": f"{start_lat},{start_lon}",
+                "end": f"{end_lat},{end_lon}",
+                "route_type": route_type,
+                "length_m": route.length,
+                "duration_s": route.duration,
+            },
+        )
 
         return route
 
@@ -467,17 +492,20 @@ class MapyClient:
             MatrixResult with 2D array of length/duration.
         """
         if not isinstance(starts, (list, tuple)) or len(starts) < 1:
-            raise SecurityError("At least one start is required")
+            msg = "At least one start is required"
+            raise SecurityError(msg)
 
         for i, s in enumerate(starts):
             if not isinstance(s, (list, tuple)) or len(s) != 2:
-                raise SecurityError(f"Start {i} must be a [lat, lon] pair")
+                msg = f"Start {i} must be a [lat, lon] pair"
+                raise SecurityError(msg)
             validate_coordinates(s[0], s[1])
 
         if ends is not None:
             for i, e in enumerate(ends):
                 if not isinstance(e, (list, tuple)) or len(e) != 2:
-                    raise SecurityError(f"End {i} must be a [lat, lon] pair")
+                    msg = f"End {i} must be a [lat, lon] pair"
+                    raise SecurityError(msg)
                 validate_coordinates(e[0], e[1])
 
             count = len(starts) * len(ends)
@@ -485,9 +513,8 @@ class MapyClient:
             count = len(starts) * len(starts)
 
         if count > 100:
-            raise SecurityError(
-                f"starts × ends = {count} exceeds maximum of 100"
-            )
+            msg = f"starts × ends = {count} exceeds maximum of 100"
+            raise SecurityError(msg)
 
         route_type = validate_route_type(route_type)
         rate_limiter.check("matrix")
@@ -510,11 +537,14 @@ class MapyClient:
 
         result = self._parse_matrix(data)
 
-        audit_log("matrix_routing", details={
-            "starts": len(starts),
-            "ends": len(ends) if ends else len(starts),
-            "route_type": route_type,
-        })
+        audit_log(
+            "matrix_routing",
+            details={
+                "starts": len(starts),
+                "ends": len(ends) if ends else len(starts),
+                "route_type": route_type,
+            },
+        )
 
         return result
 
@@ -541,6 +571,10 @@ class MapyClient:
         cached = self.cache.get(cache_key)
         if cached is not None:
             audit_log("get_elevation", details={"count": len(positions), "cached": True})
+            # Type guard for cached value
+            if not isinstance(cached, list):
+                msg = "Invalid cached elevation results"
+                raise SecurityError(msg)
             return cached
 
         positions_str = "|".join(f"{lon},{lat}" for lat, lon in positions)
@@ -589,6 +623,10 @@ class MapyClient:
         cached = self.cache.get(cache_key)
         if cached is not None:
             audit_log("get_timezone_by_coords", details={"lat": lat, "lon": lon, "cached": True})
+            # Type guard for cached value
+            if not isinstance(cached, TimezoneInfo):
+                msg = "Invalid cached timezone info"
+                raise SecurityError(msg)
             return cached
 
         params: dict[str, Any] = {"lon": lon, "lat": lat}
@@ -609,10 +647,12 @@ class MapyClient:
             TimezoneInfo.
         """
         if not iana_name or not isinstance(iana_name, str):
-            raise SecurityError("Timezone name must be a non-empty string")
+            msg = "Timezone name must be a non-empty string"
+            raise SecurityError(msg)
         iana_name = iana_name.strip()
         if len(iana_name) > 100:
-            raise SecurityError("Timezone name too long")
+            msg = "Timezone name too long"
+            raise SecurityError(msg)
 
         rate_limiter.check("timezone")
 
@@ -620,6 +660,10 @@ class MapyClient:
         cached = self.cache.get(cache_key)
         if cached is not None:
             audit_log("get_timezone_by_name", details={"name": iana_name, "cached": True})
+            # Type guard for cached value
+            if not isinstance(cached, TimezoneInfo):
+                msg = "Invalid cached timezone info"
+                raise SecurityError(msg)
             return cached
 
         params: dict[str, Any] = {"name": iana_name}
@@ -641,14 +685,18 @@ class MapyClient:
         for item in items:
             pos = item.get("position", {})
             reg = item.get("regionalStructure", [])
-            regional = [
-                RegionalEntity(
-                    name=r.get("name", ""),
-                    type=r.get("type", ""),
-                    iso_code=r.get("isoCode"),
-                )
-                for r in reg
-            ] if reg else None
+            regional = (
+                [
+                    RegionalEntity(
+                        name=r.get("name", ""),
+                        type=r.get("type", ""),
+                        iso_code=r.get("isoCode"),
+                    )
+                    for r in reg
+                ]
+                if reg
+                else None
+            )
 
             results.append(
                 GeocodedResult(
@@ -742,10 +790,7 @@ class MapyClient:
 
     def _parse_matrix(self, data: dict | list) -> MatrixResult:
         """Parse matrix routing response into MatrixResult."""
-        if isinstance(data, list):
-            raw_matrix = data
-        else:
-            raw_matrix = data.get("matrix", [])
+        raw_matrix = data if isinstance(data, list) else data.get("matrix", [])
         matrix: list[list[MatrixEntry]] = []
         for row in raw_matrix:
             matrix_row: list[MatrixEntry] = []

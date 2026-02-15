@@ -139,9 +139,7 @@ class TestValidateFilePath:
             validate_file_path("")
 
     def test_allows_nonexistent_when_unchecked(self, tmp_path):
-        path = validate_file_path(
-            str(tmp_path / "new_file.txt"), check_exists=False
-        )
+        path = validate_file_path(str(tmp_path / "new_file.txt"), check_exists=False)
         assert path.name == "new_file.txt"
 
     def test_restricted_base_dirs(self, tmp_path):
@@ -151,9 +149,7 @@ class TestValidateFilePath:
         other.mkdir()
 
         with pytest.raises(SecurityError, match="outside allowed"):
-            validate_file_path(
-                str(f), allowed_base_dirs=[other]
-            )
+            validate_file_path(str(f), allowed_base_dirs=[other])
 
 
 class TestValidateSavePath:
@@ -230,9 +226,7 @@ class TestValidateTotalAttachmentSize:
 
     def test_rejects_over_limit(self):
         with pytest.raises(SecurityError, match="Total attachments"):
-            validate_total_attachment_size(
-                [MAX_TOTAL_ATTACHMENT_SIZE // 2 + 1] * 2
-            )
+            validate_total_attachment_size([MAX_TOTAL_ATTACHMENT_SIZE // 2 + 1] * 2)
 
 
 # =========================================================================
@@ -374,9 +368,7 @@ class TestSanitizeErrorMessage:
         assert "supersecret123" not in msg
 
     def test_removes_file_paths(self):
-        msg = sanitize_error_message(
-            Exception("Error reading /home/user/gmail-credentials.json")
-        )
+        msg = sanitize_error_message(Exception("Error reading /home/user/gmail-credentials.json"))
         assert "gmail-credentials.json" not in msg
 
     def test_preserves_safe_messages(self):
@@ -446,14 +438,11 @@ class TestRateLimiter:
 class TestAuditLog:
     def test_writes_json_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "audit.log"
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.gmail_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.gmail_mcp.security._AUDIT_DIR", tmp_path)
         # Reset logger handlers
         import logging
+
         logger = logging.getLogger("childermass.gmail_mcp.audit")
         logger.handlers.clear()
 
@@ -472,13 +461,10 @@ class TestAuditLog:
 
     def test_failure_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "audit.log"
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.gmail_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.gmail_mcp.security._AUDIT_DIR", tmp_path)
         import logging
+
         logger = logging.getLogger("childermass.gmail_mcp.audit")
         logger.handlers.clear()
 
@@ -508,12 +494,8 @@ class TestAuthKeyring:
 
     def test_list_authenticated_accounts_empty(self, tmp_path, monkeypatch):
         """With no tokens, should return empty list."""
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path / "empty"
-        )
-        monkeypatch.setattr(
-            "childermass.gmail_mcp.auth._keyring_available", False
-        )
+        monkeypatch.setattr("childermass.gmail_mcp.auth.DEFAULT_TOKEN_DIR", tmp_path / "empty")
+        monkeypatch.setattr("childermass.gmail_mcp.auth._keyring_available", False)
 
         from childermass.gmail_mcp.auth import list_authenticated_accounts
 

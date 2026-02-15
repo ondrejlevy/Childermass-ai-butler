@@ -4,7 +4,6 @@ Tests for memory_mcp security module.
 Covers all validators, sanitizers, rate limiter, and audit logging.
 """
 
-
 import pytest
 
 from childermass.memory_mcp.security import (
@@ -12,10 +11,10 @@ from childermass.memory_mcp.security import (
     MAX_QUERY_LENGTH,
     MAX_TAG_LENGTH,
     MAX_TAGS_COUNT,
-    RateLimiter,
-    SecurityError,
     VALID_CATEGORIES,
     VALID_SECTORS,
+    RateLimiter,
+    SecurityError,
     audit_log,
     sanitize_error_message,
     validate_category,
@@ -344,6 +343,7 @@ class TestAuditLog:
     def test_writes_to_file(self, tmp_path, monkeypatch):
         """Test that audit_log writes JSON to the audit file."""
         import childermass.memory_mcp.security as sec
+
         fake_log = tmp_path / "audit.log"
         monkeypatch.setattr(sec, "AUDIT_LOG_FILE", fake_log)
         monkeypatch.setattr(sec, "CONFIG_DIR", tmp_path)
@@ -357,6 +357,7 @@ class TestAuditLog:
     def test_writes_with_metadata(self, tmp_path, monkeypatch):
         """Test that audit_log includes metadata."""
         import childermass.memory_mcp.security as sec
+
         fake_log = tmp_path / "audit.log"
         monkeypatch.setattr(sec, "AUDIT_LOG_FILE", fake_log)
         monkeypatch.setattr(sec, "CONFIG_DIR", tmp_path)

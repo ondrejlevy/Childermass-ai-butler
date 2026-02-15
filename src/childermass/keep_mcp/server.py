@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from . import client
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-keep")
 
@@ -84,7 +85,7 @@ def keep_create_note(
                 item = item.strip()
                 if not item:
                     continue
-                checked = item.startswith("[x]") or item.startswith("[X]")
+                checked = item.startswith(("[x]", "[X]"))
                 if checked:
                     item = item[3:].strip()
                 item_tuples.append((item, checked))
@@ -133,9 +134,7 @@ def keep_list_notes(
         label_list = (
             [label.strip() for label in labels.split(",") if label.strip()] if labels else None
         )
-        color_list = (
-            [c.strip() for c in colors.split(",") if c.strip()] if colors else None
-        )
+        color_list = [c.strip() for c in colors.split(",") if c.strip()] if colors else None
 
         notes = client.list_notes(
             query=query,

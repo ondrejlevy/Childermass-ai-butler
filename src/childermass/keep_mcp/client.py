@@ -38,6 +38,7 @@ from .security import (
     validate_query,
 )
 
+
 logger = logging.getLogger(__name__)
 
 # Module-level Keep client cache - keyed by account email
@@ -125,10 +126,11 @@ def get_keep_client(account: str | None = None) -> gkeepapi.Keep:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Keep accounts found. Run:\n"
                 "  python -m childermass.keep_mcp.auth --account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
         if account == "default":
             account = None
@@ -224,7 +226,8 @@ def _find_note(keep: gkeepapi.Keep, note_id: str) -> TopLevelNode:
     """Find a note by ID. Raises SecurityError if not found."""
     node = keep.get(note_id)
     if node is None:
-        raise SecurityError(f"Note not found: {note_id}")
+        msg = f"Note not found: {note_id}"
+        raise SecurityError(msg)
     return node
 
 
@@ -238,7 +241,8 @@ def _find_list_item(note: List, item_id: str):
             for child in item.subitems:
                 if child.id == item_id:
                     return child
-    raise SecurityError(f"List item not found: {item_id}")
+    msg = f"List item not found: {item_id}"
+    raise SecurityError(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -312,11 +316,15 @@ def create_note(
 
         keep.sync()
 
-        audit_log("create_note", acct_key, {
-            "note_id": node.id,
-            "type": note_type,
-            "title": title[:50],
-        })
+        audit_log(
+            "create_note",
+            acct_key,
+            {
+                "note_id": node.id,
+                "type": note_type,
+                "title": title[:50],
+            },
+        )
 
         return _node_to_detail(node)
 
@@ -404,13 +412,12 @@ def list_notes(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def search_notes(
-    query: str, max_results: int = 50, account: str | None = None
-) -> list[NoteInfo]:
+def search_notes(query: str, max_results: int = 50, account: str | None = None) -> list[NoteInfo]:
     """Search notes by text query."""
     query = validate_query(query)
     if not query:
-        raise SecurityError("Search query is required")
+        msg = "Search query is required"
+        raise SecurityError(msg)
 
     acct_key = account or "default"
     rate_limiter.check(acct_key, "search")
@@ -448,9 +455,8 @@ def update_note(
         if title is not None:
             node.title = title
 
-        if text is not None:
-            if isinstance(node, Note):
-                node.text = text
+        if text is not None and isinstance(node, Note):
+            node.text = text
 
         if color is not None:
             node.color = _str_to_color(color)
@@ -511,7 +517,8 @@ def get_list_items(note_id: str, account: str | None = None) -> list[ListItemInf
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         items: list[ListItemInfo] = []
         for item in node.items:
@@ -569,7 +576,8 @@ def add_list_item(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         placement = (
             gkeepapi.node.NewListItemPlacementValue.Top
@@ -580,10 +588,14 @@ def add_list_item(
         item = node.add(text, checked, placement)
         keep.sync()
 
-        audit_log("add_list_item", acct_key, {
-            "note_id": note_id,
-            "text": text[:50],
-        })
+        audit_log(
+            "add_list_item",
+            acct_key,
+            {
+                "note_id": note_id,
+                "text": text[:50],
+            },
+        )
 
         return ListItemInfo(
             id=item.id,
@@ -615,7 +627,8 @@ def update_list_item(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         item = _find_list_item(node, item_id)
 
@@ -628,10 +641,14 @@ def update_list_item(
 
         keep.sync()
 
-        audit_log("update_list_item", acct_key, {
-            "note_id": note_id,
-            "item_id": item_id,
-        })
+        audit_log(
+            "update_list_item",
+            acct_key,
+            {
+                "note_id": note_id,
+                "item_id": item_id,
+            },
+        )
 
         return ListItemInfo(
             id=item.id,
@@ -645,23 +662,17 @@ def update_list_item(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def check_list_item(
-    note_id: str, item_id: str, account: str | None = None
-) -> ListItemInfo:
+def check_list_item(note_id: str, item_id: str, account: str | None = None) -> ListItemInfo:
     """Mark a list item as checked."""
     return update_list_item(note_id, item_id, checked=True, account=account)
 
 
-def uncheck_list_item(
-    note_id: str, item_id: str, account: str | None = None
-) -> ListItemInfo:
+def uncheck_list_item(note_id: str, item_id: str, account: str | None = None) -> ListItemInfo:
     """Mark a list item as unchecked."""
     return update_list_item(note_id, item_id, checked=False, account=account)
 
 
-def delete_list_item(
-    note_id: str, item_id: str, account: str | None = None
-) -> dict:
+def delete_list_item(note_id: str, item_id: str, account: str | None = None) -> dict:
     """Delete a list item."""
     note_id = validate_note_id(note_id)
     item_id = validate_item_id(item_id)
@@ -673,16 +684,21 @@ def delete_list_item(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         item = _find_list_item(node, item_id)
         item.delete()
         keep.sync()
 
-        audit_log("delete_list_item", acct_key, {
-            "note_id": note_id,
-            "item_id": item_id,
-        })
+        audit_log(
+            "delete_list_item",
+            acct_key,
+            {
+                "note_id": note_id,
+                "item_id": item_id,
+            },
+        )
 
         return {"success": True, "note_id": note_id, "item_id": item_id}
 
@@ -692,9 +708,7 @@ def delete_list_item(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def sort_list(
-    note_id: str, account: str | None = None
-) -> list[ListItemInfo]:
+def sort_list(note_id: str, account: str | None = None) -> list[ListItemInfo]:
     """Sort list items alphabetically (unchecked on top)."""
     note_id = validate_note_id(note_id)
     acct_key = account or "default"
@@ -705,7 +719,8 @@ def sort_list(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         node.sort_items()
         keep.sync()
@@ -720,9 +735,7 @@ def sort_list(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def get_unchecked_items(
-    note_id: str, account: str | None = None
-) -> list[ListItemInfo]:
+def get_unchecked_items(note_id: str, account: str | None = None) -> list[ListItemInfo]:
     """Get only unchecked items from a list."""
     note_id = validate_note_id(note_id)
     acct_key = account or "default"
@@ -733,7 +746,8 @@ def get_unchecked_items(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         return [
             ListItemInfo(
@@ -767,7 +781,8 @@ def bulk_check_items(
         node = _find_note(keep, note_id)
 
         if not isinstance(node, List):
-            raise SecurityError(f"Note {note_id} is not a list")
+            msg = f"Note {note_id} is not a list"
+            raise SecurityError(msg)
 
         results = []
         for iid in validated_ids:
@@ -783,11 +798,15 @@ def bulk_check_items(
 
         keep.sync()
 
-        audit_log("bulk_check_items", acct_key, {
-            "note_id": note_id,
-            "count": len(validated_ids),
-            "checked": checked,
-        })
+        audit_log(
+            "bulk_check_items",
+            acct_key,
+            {
+                "note_id": note_id,
+                "count": len(validated_ids),
+                "checked": checked,
+            },
+        )
 
         return results
 
@@ -802,9 +821,7 @@ def bulk_check_items(
 # ---------------------------------------------------------------------------
 
 
-def share_note(
-    note_id: str, email: str, account: str | None = None
-) -> dict:
+def share_note(note_id: str, email: str, account: str | None = None) -> dict:
     """Share a note with a collaborator."""
     note_id = validate_note_id(note_id)
     email = validate_email(email)
@@ -817,10 +834,14 @@ def share_note(
         node.collaborators.add(email)
         keep.sync()
 
-        audit_log("share_note", acct_key, {
-            "note_id": note_id,
-            "email": email,
-        })
+        audit_log(
+            "share_note",
+            acct_key,
+            {
+                "note_id": note_id,
+                "email": email,
+            },
+        )
 
         return {"success": True, "note_id": note_id, "shared_with": email}
 
@@ -830,9 +851,7 @@ def share_note(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def unshare_note(
-    note_id: str, email: str, account: str | None = None
-) -> dict:
+def unshare_note(note_id: str, email: str, account: str | None = None) -> dict:
     """Remove a collaborator from a note."""
     note_id = validate_note_id(note_id)
     email = validate_email(email)
@@ -845,10 +864,14 @@ def unshare_note(
         node.collaborators.remove(email)
         keep.sync()
 
-        audit_log("unshare_note", acct_key, {
-            "note_id": note_id,
-            "email": email,
-        })
+        audit_log(
+            "unshare_note",
+            acct_key,
+            {
+                "note_id": note_id,
+                "email": email,
+            },
+        )
 
         return {"success": True, "note_id": note_id, "unshared": email}
 
@@ -858,9 +881,7 @@ def unshare_note(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def list_collaborators(
-    note_id: str, account: str | None = None
-) -> list[str]:
+def list_collaborators(note_id: str, account: str | None = None) -> list[str]:
     """List all collaborators on a note."""
     note_id = validate_note_id(note_id)
     acct_key = account or "default"
@@ -889,10 +910,7 @@ def list_labels(account: str | None = None) -> list[LabelInfo]:
 
     try:
         keep = get_keep_client(account)
-        return [
-            LabelInfo(id=label.id, name=label.name)
-            for label in keep.labels()
-        ]
+        return [LabelInfo(id=label.id, name=label.name) for label in keep.labels()]
     except SecurityError:
         raise
     except Exception as e:
@@ -937,7 +955,8 @@ def delete_label(name: str, account: str | None = None) -> dict:
         label = keep.findLabel(name)
 
         if not label:
-            raise SecurityError(f"Label not found: {name}")
+            msg = f"Label not found: {name}"
+            raise SecurityError(msg)
 
         keep.deleteLabel(label)
         keep.sync()
@@ -952,9 +971,7 @@ def delete_label(name: str, account: str | None = None) -> dict:
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def add_label_to_note(
-    note_id: str, label_name: str, account: str | None = None
-) -> dict:
+def add_label_to_note(note_id: str, label_name: str, account: str | None = None) -> dict:
     """Add a label to a note."""
     note_id = validate_note_id(note_id)
     label_name = validate_label_name(label_name)
@@ -972,10 +989,14 @@ def add_label_to_note(
         node.labels.add(label)
         keep.sync()
 
-        audit_log("add_label_to_note", acct_key, {
-            "note_id": note_id,
-            "label": label_name,
-        })
+        audit_log(
+            "add_label_to_note",
+            acct_key,
+            {
+                "note_id": note_id,
+                "label": label_name,
+            },
+        )
 
         return {"success": True, "note_id": note_id, "label": label_name}
 
@@ -985,9 +1006,7 @@ def add_label_to_note(
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def remove_label_from_note(
-    note_id: str, label_name: str, account: str | None = None
-) -> dict:
+def remove_label_from_note(note_id: str, label_name: str, account: str | None = None) -> dict:
     """Remove a label from a note."""
     note_id = validate_note_id(note_id)
     label_name = validate_label_name(label_name)
@@ -1000,15 +1019,20 @@ def remove_label_from_note(
 
         label = keep.findLabel(label_name)
         if not label:
-            raise SecurityError(f"Label not found: {label_name}")
+            msg = f"Label not found: {label_name}"
+            raise SecurityError(msg)
 
         node.labels.remove(label)
         keep.sync()
 
-        audit_log("remove_label_from_note", acct_key, {
-            "note_id": note_id,
-            "label": label_name,
-        })
+        audit_log(
+            "remove_label_from_note",
+            acct_key,
+            {
+                "note_id": note_id,
+                "label": label_name,
+            },
+        )
 
         return {"success": True, "note_id": note_id, "label": label_name}
 
@@ -1043,9 +1067,7 @@ def unarchive_note(note_id: str, account: str | None = None) -> NoteDetail:
     return update_note(note_id, archived=False, account=account)
 
 
-def set_note_color(
-    note_id: str, color: str, account: str | None = None
-) -> NoteDetail:
+def set_note_color(note_id: str, color: str, account: str | None = None) -> NoteDetail:
     """Set note color."""
     return update_note(note_id, color=color, account=account)
 
@@ -1106,16 +1128,15 @@ def duplicate_note(
                 labels=detail.labels if detail.labels else None,
                 account=account,
             )
-        else:
-            return create_note(
-                title=title,
-                content=detail.text,
-                note_type="text",
-                color=detail.color,
-                pinned=detail.pinned,
-                labels=detail.labels if detail.labels else None,
-                account=account,
-            )
+        return create_note(
+            title=title,
+            content=detail.text,
+            note_type="text",
+            color=detail.color,
+            pinned=detail.pinned,
+            labels=detail.labels if detail.labels else None,
+            account=account,
+        )
 
     except SecurityError:
         raise

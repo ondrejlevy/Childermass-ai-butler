@@ -17,11 +17,11 @@ API reference: https://developer.ui.com/protect/v6.2.88/
 import base64
 import logging
 import time
-import urllib3
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
+import urllib3
 
 from .auth import get_credentials, get_nvr_url, load_config, verify_ssl
 from .security import (
@@ -38,6 +38,7 @@ from .security import (
     validate_snapshot_dimensions,
     validate_time_range,
 )
+
 
 # Suppress InsecureRequestWarning for self-signed NVR certs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -192,10 +193,11 @@ class _ProtectSession:
         if self._client is None:
             config = load_config()
             if config is None:
-                raise RuntimeError(
+                msg = (
                     "NVR not configured. Run setup first:\n"
                     "  python -m childermass.protect_mcp.auth --setup"
                 )
+                raise RuntimeError(msg)
 
             self._base_url = get_nvr_url(config)
             ssl = verify_ssl(config)
@@ -219,9 +221,8 @@ class _ProtectSession:
             resp = client.get(self._base_url)
             self._csrf_token = resp.headers.get("x-csrf-token", "")
         except httpx.ConnectError:
-            raise RuntimeError(
-                "Cannot connect to NVR. Check that the NVR is reachable."
-            )
+            msg = "Cannot connect to NVR. Check that the NVR is reachable."
+            raise RuntimeError(msg)
 
         # Step 2: Login
         login_resp = client.post(
@@ -236,13 +237,11 @@ class _ProtectSession:
         )
 
         if login_resp.status_code == 401:
-            raise SecurityError(
-                "NVR authentication failed – invalid username or password"
-            )
-        elif login_resp.status_code != 200:
-            raise RuntimeError(
-                f"NVR login failed with HTTP {login_resp.status_code}"
-            )
+            msg = "NVR authentication failed – invalid username or password"
+            raise SecurityError(msg)
+        if login_resp.status_code != 200:
+            msg = f"NVR login failed with HTTP {login_resp.status_code}"
+            raise RuntimeError(msg)
 
         # Step 3: Extract updated CSRF token
         self._csrf_token = login_resp.headers.get(
@@ -319,7 +318,8 @@ class _ProtectSession:
 
         raw = self.get_json("/proxy/protect/api/bootstrap")
         if not isinstance(raw, dict):
-            raise RuntimeError("Unexpected bootstrap response format")
+            msg = "Unexpected bootstrap response format"
+            raise RuntimeError(msg)
         self._bootstrap_cache = raw
         self._bootstrap_time = now
 
@@ -358,7 +358,7 @@ def _ts_to_iso(ts_ms: int | float | None) -> str | None:
     if not ts_ms:
         return None
     try:
-        dt = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
+        dt = datetime.fromtimestamp(ts_ms / 1000, tz=UTC)
         return dt.isoformat()
     except (ValueError, OSError):
         return None
@@ -401,34 +401,36 @@ def list_cameras() -> list[Camera]:
         smart_settings = cam.get("smartDetectSettings", {})
         channels = cam.get("channels", [])
 
-        cameras.append(Camera(
-            id=cam["id"],
-            name=cam.get("name", "Unknown"),
-            type=cam.get("type", "Unknown"),
-            model=cam.get("marketName", cam.get("type", "Unknown")),
-            state=cam.get("state", "UNKNOWN"),
-            is_recording=cam.get("isRecording", False),
-            is_motion_detected=cam.get("isMotionDetected", False),
-            last_motion=_ts_to_iso(cam.get("lastMotion")),
-            is_doorbell=feature_flags.get("isDoorbell", False),
-            last_ring=_ts_to_iso(cam.get("lastRing")),
-            has_package_camera=feature_flags.get("hasPackageCamera", False),
-            smart_detect_types=smart_settings.get("objectTypes", []),
-            mic_enabled=cam.get("isMicEnabled", False),
-            status_light_on=cam.get("ledSettings", {}).get("isEnabled", False),
-            hdr_mode=cam.get("hdrMode", False),
-            channels=[
-                {
-                    "id": ch.get("id"),
-                    "name": ch.get("name", ""),
-                    "width": ch.get("width"),
-                    "height": ch.get("height"),
-                    "fps": ch.get("fps"),
-                    "is_rtsp_enabled": ch.get("isRtspEnabled", False),
-                }
-                for ch in channels[:3]  # high, medium, low
-            ],
-        ))
+        cameras.append(
+            Camera(
+                id=cam["id"],
+                name=cam.get("name", "Unknown"),
+                type=cam.get("type", "Unknown"),
+                model=cam.get("marketName", cam.get("type", "Unknown")),
+                state=cam.get("state", "UNKNOWN"),
+                is_recording=cam.get("isRecording", False),
+                is_motion_detected=cam.get("isMotionDetected", False),
+                last_motion=_ts_to_iso(cam.get("lastMotion")),
+                is_doorbell=feature_flags.get("isDoorbell", False),
+                last_ring=_ts_to_iso(cam.get("lastRing")),
+                has_package_camera=feature_flags.get("hasPackageCamera", False),
+                smart_detect_types=smart_settings.get("objectTypes", []),
+                mic_enabled=cam.get("isMicEnabled", False),
+                status_light_on=cam.get("ledSettings", {}).get("isEnabled", False),
+                hdr_mode=cam.get("hdrMode", False),
+                channels=[
+                    {
+                        "id": ch.get("id"),
+                        "name": ch.get("name", ""),
+                        "width": ch.get("width"),
+                        "height": ch.get("height"),
+                        "fps": ch.get("fps"),
+                        "is_rtsp_enabled": ch.get("isRtspEnabled", False),
+                    }
+                    for ch in channels[:3]  # high, medium, low
+                ],
+            )
+        )
 
     audit_log("list_cameras", details={"count": len(cameras)})
     return cameras
@@ -444,7 +446,8 @@ def get_camera(camera_id: str) -> Camera:
         if cam.id == camera_id:
             return cam
 
-    raise SecurityError(f"Camera not found: {camera_id}")
+    msg = f"Camera not found: {camera_id}"
+    raise SecurityError(msg)
 
 
 def get_camera_snapshot(
@@ -469,12 +472,15 @@ def get_camera_snapshot(
 
     encoded = base64.b64encode(resp.content).decode("ascii")
 
-    audit_log("get_snapshot", details={
-        "camera_id": camera_id,
-        "camera_name": _session.get_camera_name(camera_id),
-        "dimensions": f"{w}x{h}",
-        "size_bytes": len(resp.content),
-    })
+    audit_log(
+        "get_snapshot",
+        details={
+            "camera_id": camera_id,
+            "camera_name": _session.get_camera_name(camera_id),
+            "dimensions": f"{w}x{h}",
+            "size_bytes": len(resp.content),
+        },
+    )
 
     return encoded
 
@@ -543,26 +549,31 @@ def list_events(
             if not any(t in ev_smart_types for t in smart_detect_types_validated):
                 continue
 
-        events.append(Event(
-            id=ev["id"],
-            camera_name=_session.get_camera_name(ev.get("camera", "")),
-            camera_id=ev.get("camera", ""),
-            type=ev.get("type", "unknown"),
-            start=_ts_to_iso(ev.get("start")) or "",
-            end=_ts_to_iso(ev.get("end")),
-            score=ev.get("score", 0),
-            smart_detect_types=ev_smart_types,
-            thumbnail_id=ev.get("thumbnail"),
-            metadata=_extract_event_metadata(ev),
-        ))
+        events.append(
+            Event(
+                id=ev["id"],
+                camera_name=_session.get_camera_name(ev.get("camera", "")),
+                camera_id=ev.get("camera", ""),
+                type=ev.get("type", "unknown"),
+                start=_ts_to_iso(ev.get("start")) or "",
+                end=_ts_to_iso(ev.get("end")),
+                score=ev.get("score", 0),
+                smart_detect_types=ev_smart_types,
+                thumbnail_id=ev.get("thumbnail"),
+                metadata=_extract_event_metadata(ev),
+            )
+        )
 
         if len(events) >= max_results:
             break
 
-    audit_log("list_events", details={
-        "count": len(events),
-        "period_hours": round((end_ms - start_ms) / 3_600_000, 1),
-    })
+    audit_log(
+        "list_events",
+        details={
+            "count": len(events),
+            "period_hours": round((end_ms - start_ms) / 3_600_000, 1),
+        },
+    )
 
     return events
 
@@ -614,10 +625,13 @@ def get_event_thumbnail(event_id: str) -> str:
 
     encoded = base64.b64encode(resp.content).decode("ascii")
 
-    audit_log("get_event_thumbnail", details={
-        "event_id": event_id,
-        "size_bytes": len(resp.content),
-    })
+    audit_log(
+        "get_event_thumbnail",
+        details={
+            "event_id": event_id,
+            "size_bytes": len(resp.content),
+        },
+    )
 
     return encoded
 
@@ -638,19 +652,21 @@ def list_sensors() -> list[Sensor]:
         stats = s.get("stats", {})
         battery = s.get("batteryStatus", {})
 
-        sensors.append(Sensor(
-            id=s["id"],
-            name=s.get("name", "Unknown"),
-            model=s.get("marketName", s.get("type", "Unknown")),
-            state=s.get("state", "UNKNOWN"),
-            temperature=stats.get("temperature", {}).get("value"),
-            humidity=stats.get("humidity", {}).get("value"),
-            light_level=stats.get("light", {}).get("value"),
-            is_motion_detected=s.get("isMotionDetected", False),
-            is_opened=s.get("isOpened", False),
-            battery_percent=battery.get("percentage"),
-            alarm_triggered_at=_ts_to_iso(s.get("alarmTriggeredAt")),
-        ))
+        sensors.append(
+            Sensor(
+                id=s["id"],
+                name=s.get("name", "Unknown"),
+                model=s.get("marketName", s.get("type", "Unknown")),
+                state=s.get("state", "UNKNOWN"),
+                temperature=stats.get("temperature", {}).get("value"),
+                humidity=stats.get("humidity", {}).get("value"),
+                light_level=stats.get("light", {}).get("value"),
+                is_motion_detected=s.get("isMotionDetected", False),
+                is_opened=s.get("isOpened", False),
+                battery_percent=battery.get("percentage"),
+                alarm_triggered_at=_ts_to_iso(s.get("alarmTriggeredAt")),
+            )
+        )
 
     audit_log("list_sensors", details={"count": len(sensors)})
     return sensors
@@ -671,18 +687,20 @@ def list_lights() -> list[Light]:
     for light_data in bootstrap.get("lights", []):
         settings = light_data.get("lightDeviceSettings", {})
 
-        lights.append(Light(
-            id=light_data["id"],
-            name=light_data.get("name", "Unknown"),
-            model=light_data.get("marketName", light_data.get("type", "Unknown")),
-            state=light_data.get("state", "UNKNOWN"),
-            is_on=light_data.get("isLightOn", False),
-            is_dark=light_data.get("isDark", False),
-            is_motion_detected=light_data.get("isPirMotionDetected", False),
-            last_motion=_ts_to_iso(light_data.get("lastMotion")),
-            led_level=settings.get("ledLevel", 0),
-            pir_sensitivity=settings.get("pirSensitivity", 0),
-        ))
+        lights.append(
+            Light(
+                id=light_data["id"],
+                name=light_data.get("name", "Unknown"),
+                model=light_data.get("marketName", light_data.get("type", "Unknown")),
+                state=light_data.get("state", "UNKNOWN"),
+                is_on=light_data.get("isLightOn", False),
+                is_dark=light_data.get("isDark", False),
+                is_motion_detected=light_data.get("isPirMotionDetected", False),
+                last_motion=_ts_to_iso(light_data.get("lastMotion")),
+                led_level=settings.get("ledLevel", 0),
+                pir_sensitivity=settings.get("pirSensitivity", 0),
+            )
+        )
 
     audit_log("list_lights", details={"count": len(lights)})
     return lights
@@ -709,14 +727,18 @@ def toggle_light(light_id: str, on: bool) -> Light:
     lights = list_lights()
     for light in lights:
         if light.id == light_id:
-            audit_log("toggle_light", details={
-                "light_id": light_id,
-                "light_name": light.name,
-                "action": "on" if on else "off",
-            })
+            audit_log(
+                "toggle_light",
+                details={
+                    "light_id": light_id,
+                    "light_name": light.name,
+                    "action": "on" if on else "off",
+                },
+            )
             return light
 
-    raise SecurityError(f"Light not found after toggle: {light_id}")
+    msg = f"Light not found after toggle: {light_id}"
+    raise SecurityError(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -739,16 +761,18 @@ def list_doorbells() -> list[Doorbell]:
         lcd = cam.get("lcdMessage", {})
         lcd_text = lcd.get("text") if lcd else None
 
-        doorbells.append(Doorbell(
-            id=cam["id"],
-            name=cam.get("name", "Unknown"),
-            model=cam.get("marketName", cam.get("type", "Unknown")),
-            state=cam.get("state", "UNKNOWN"),
-            last_ring=_ts_to_iso(cam.get("lastRing")),
-            lcd_message=lcd_text,
-            has_package_camera=feature_flags.get("hasPackageCamera", False),
-            smart_detect_types=cam.get("smartDetectSettings", {}).get("objectTypes", []),
-        ))
+        doorbells.append(
+            Doorbell(
+                id=cam["id"],
+                name=cam.get("name", "Unknown"),
+                model=cam.get("marketName", cam.get("type", "Unknown")),
+                state=cam.get("state", "UNKNOWN"),
+                last_ring=_ts_to_iso(cam.get("lastRing")),
+                lcd_message=lcd_text,
+                has_package_camera=feature_flags.get("hasPackageCamera", False),
+                smart_detect_types=cam.get("smartDetectSettings", {}).get("objectTypes", []),
+            )
+        )
 
     audit_log("list_doorbells", details={"count": len(doorbells)})
     return doorbells
@@ -854,10 +878,13 @@ def get_recent_activity(hours: int = 24) -> ActivitySummary:
         sensor_events=sensor_count,
     )
 
-    audit_log("get_recent_activity", details={
-        "hours": hours,
-        "total_events": len(events),
-    })
+    audit_log(
+        "get_recent_activity",
+        details={
+            "hours": hours,
+            "total_events": len(events),
+        },
+    )
 
     return summary
 
@@ -889,8 +916,7 @@ def get_system_status() -> dict:
             + ", ".join(c.name for c in disconnected)
         )
 
-    low_battery = [s for s in sensors
-                   if s.battery_percent is not None and s.battery_percent < 20]
+    low_battery = [s for s in sensors if s.battery_percent is not None and s.battery_percent < 20]
     if low_battery:
         issues.append(
             f"{len(low_battery)} sensor(s) with low battery: "
@@ -914,16 +940,11 @@ def get_system_status() -> dict:
             "total": len(cameras),
             "connected": sum(1 for c in cameras if c.state == "CONNECTED"),
             "recording": sum(1 for c in cameras if c.is_recording),
-            "motion_detected": [
-                c.name for c in cameras if c.is_motion_detected
-            ],
+            "motion_detected": [c.name for c in cameras if c.is_motion_detected],
         },
         "sensors": {
             "total": len(sensors),
-            "open_contacts": [
-                {"name": s.name, "is_opened": s.is_opened}
-                for s in open_contacts
-            ],
+            "open_contacts": [{"name": s.name, "is_opened": s.is_opened} for s in open_contacts],
             "readings": [
                 {
                     "name": s.name,

@@ -19,8 +19,6 @@ import validators
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # MIME type whitelist
@@ -111,7 +109,8 @@ def validate_email(email: str) -> str:
     Returns normalised email address. Raises SecurityError on invalid input.
     """
     if not email or not isinstance(email, str):
-        raise SecurityError("Email address is required")
+        msg = "Email address is required"
+        raise SecurityError(msg)
 
     email = email.strip()
 
@@ -125,10 +124,12 @@ def validate_email(email: str) -> str:
 
     # Check for injection characters
     if any(char in email_lower for char in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Email contains invalid control characters")
+        msg = "Email contains invalid control characters"
+        raise SecurityError(msg)
 
     if not validators.email(email_lower):
-        raise SecurityError(f"Invalid email address format: {email}")
+        msg = f"Invalid email address format: {email}"
+        raise SecurityError(msg)
 
     return email_lower
 
@@ -149,9 +150,8 @@ def validate_email_list(emails: str) -> list[str]:
             validated.append(validate_email(email))
 
     if len(validated) > MAX_RECIPIENTS:
-        raise SecurityError(
-            f"Too many recipients: {len(validated)} (max {MAX_RECIPIENTS})"
-        )
+        msg = f"Too many recipients: {len(validated)} (max {MAX_RECIPIENTS})"
+        raise SecurityError(msg)
 
     return validated
 
@@ -167,31 +167,34 @@ def validate_file_path(
     Prevents path traversal attacks and ensures file exists.
     """
     if not file_path or not isinstance(file_path, str):
-        raise SecurityError("File path is required")
+        msg = "File path is required"
+        raise SecurityError(msg)
 
     # Reject null bytes
     if "\0" in file_path:
-        raise SecurityError("File path contains null bytes")
+        msg = "File path contains null bytes"
+        raise SecurityError(msg)
 
     try:
         path = Path(file_path).expanduser().resolve()
     except (ValueError, OSError) as e:
-        raise SecurityError(f"Invalid file path: {file_path}") from e
+        msg = f"Invalid file path: {file_path}"
+        raise SecurityError(msg) from e
 
     # Check against allowed base directories if specified
-    if allowed_base_dirs:
-        if not any(
-            _is_subpath(path, base.resolve()) for base in allowed_base_dirs
-        ):
-            raise SecurityError(
-                f"File path outside allowed directories: {file_path}"
-            )
+    if allowed_base_dirs and not any(
+        _is_subpath(path, base.resolve()) for base in allowed_base_dirs
+    ):
+        msg = f"File path outside allowed directories: {file_path}"
+        raise SecurityError(msg)
 
     if check_exists and not path.exists():
-        raise SecurityError(f"File not found: {file_path}")
+        msg = f"File not found: {file_path}"
+        raise SecurityError(msg)
 
     if check_exists and not path.is_file():
-        raise SecurityError(f"Path is not a file: {file_path}")
+        msg = f"Path is not a file: {file_path}"
+        raise SecurityError(msg)
 
     return path
 
@@ -200,9 +203,10 @@ def _is_subpath(path: Path, base: Path) -> bool:
     """Check if path is under base directory."""
     try:
         path.relative_to(base)
-        return True
     except ValueError:
         return False
+    else:
+        return True
 
 
 def validate_save_path(save_path: str) -> Path:
@@ -215,7 +219,8 @@ def validate_save_path(save_path: str) -> Path:
 
     # Ensure parent directory exists
     if not path.parent.exists():
-        raise SecurityError(f"Directory does not exist: {path.parent}")
+        msg = f"Directory does not exist: {path.parent}"
+        raise SecurityError(msg)
 
     return path
 
@@ -229,13 +234,12 @@ def validate_mime_type(mime_type: str, strict: bool = False) -> str:
     mime_type = mime_type.lower().strip()
 
     if mime_type in DANGEROUS_MIME_TYPES:
-        raise SecurityError(f"Dangerous MIME type blocked: {mime_type}")
+        msg = f"Dangerous MIME type blocked: {mime_type}"
+        raise SecurityError(msg)
 
     if strict and mime_type not in ALLOWED_MIME_TYPES:
-        raise SecurityError(
-            f"MIME type not in whitelist: {mime_type}. "
-            "Add to ALLOWED_MIME_TYPES if safe."
-        )
+        msg = f"MIME type not in whitelist: {mime_type}. Add to ALLOWED_MIME_TYPES if safe."
+        raise SecurityError(msg)
 
     return mime_type
 
@@ -243,37 +247,31 @@ def validate_mime_type(mime_type: str, strict: bool = False) -> str:
 def validate_attachment_size(size: int, filename: str = "") -> None:
     """Validate attachment size against Gmail limits."""
     if size <= 0:
-        raise SecurityError(f"Invalid file size: {size}")
+        msg = f"Invalid file size: {size}"
+        raise SecurityError(msg)
 
     if size > MAX_ATTACHMENT_SIZE:
         size_mb = size / (1024 * 1024)
         limit_mb = MAX_ATTACHMENT_SIZE / (1024 * 1024)
-        raise SecurityError(
-            f"Attachment {filename!r} too large: {size_mb:.1f} MB "
-            f"(limit: {limit_mb:.0f} MB)"
-        )
+        msg = f"Attachment {filename!r} too large: {size_mb:.1f} MB (limit: {limit_mb:.0f} MB)"
+        raise SecurityError(msg)
 
 
-def validate_total_attachment_size(
-    sizes: list[int], filenames: list[str] | None = None
-) -> None:
+def validate_total_attachment_size(sizes: list[int], filenames: list[str] | None = None) -> None:
     """Validate combined size of all attachments."""
     total = sum(sizes)
     if total > MAX_TOTAL_ATTACHMENT_SIZE:
         total_mb = total / (1024 * 1024)
         limit_mb = MAX_TOTAL_ATTACHMENT_SIZE / (1024 * 1024)
-        raise SecurityError(
-            f"Total attachments too large: {total_mb:.1f} MB "
-            f"(limit: {limit_mb:.0f} MB)"
-        )
+        msg = f"Total attachments too large: {total_mb:.1f} MB (limit: {limit_mb:.0f} MB)"
+        raise SecurityError(msg)
 
 
 def validate_body(body: str) -> str:
     """Validate email body length."""
     if body and len(body) > MAX_BODY_LENGTH:
-        raise SecurityError(
-            f"Email body too long: {len(body)} chars (max {MAX_BODY_LENGTH})"
-        )
+        msg = f"Email body too long: {len(body)} chars (max {MAX_BODY_LENGTH})"
+        raise SecurityError(msg)
     return body or ""
 
 
@@ -283,10 +281,12 @@ def validate_subject(subject: str) -> str:
         return ""
     # Reject newlines (header injection)
     if any(c in subject for c in ["\n", "\r"]):
-        raise SecurityError("Subject contains invalid newline characters")
+        msg = "Subject contains invalid newline characters"
+        raise SecurityError(msg)
     # Reasonable length
     if len(subject) > 998:  # RFC 5322 line length limit
-        raise SecurityError("Subject too long (max 998 chars)")
+        msg = "Subject too long (max 998 chars)"
+        raise SecurityError(msg)
     return subject
 
 
@@ -307,10 +307,7 @@ def sanitize_filename(filename: str) -> str:
     # Limit length
     if len(filename) > 255:
         name_part, _, ext = filename.rpartition(".")
-        if name_part:
-            filename = name_part[: 250 - len(ext)] + "." + ext
-        else:
-            filename = filename[:255]
+        filename = name_part[: 250 - len(ext)] + "." + ext if name_part else filename[:255]
 
     return filename or "attachment"
 
@@ -343,10 +340,12 @@ def validate_gmail_query(query: str) -> str:
     # Reject control characters
     suspicious = ["\0", "\r", chr(0x1B)]
     if any(char in query for char in suspicious):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > 1000:
-        raise SecurityError("Query too long (max 1000 characters)")
+        msg = "Query too long (max 1000 characters)"
+        raise SecurityError(msg)
 
     return query
 
@@ -354,22 +353,26 @@ def validate_gmail_query(query: str) -> str:
 def validate_message_id(message_id: str) -> str:
     """Validate Gmail message ID format."""
     if not message_id or not isinstance(message_id, str):
-        raise SecurityError("Message ID is required")
+        msg = "Message ID is required"
+        raise SecurityError(msg)
     message_id = message_id.strip()
     # Gmail message IDs are hex strings
     if not re.match(r"^[a-zA-Z0-9]+$", message_id):
-        raise SecurityError(f"Invalid message ID format: {message_id}")
+        msg = f"Invalid message ID format: {message_id}"
+        raise SecurityError(msg)
     return message_id
 
 
 def validate_label_id(label_id: str) -> str:
     """Validate Gmail label ID."""
     if not label_id or not isinstance(label_id, str):
-        raise SecurityError("Label ID is required")
+        msg = "Label ID is required"
+        raise SecurityError(msg)
     label_id = label_id.strip()
     # Gmail label IDs: system labels (INBOX, UNREAD, etc.) or custom (Label_xxx)
     if not re.match(r"^[A-Za-z0-9_-]+$", label_id):
-        raise SecurityError(f"Invalid label ID format: {label_id}")
+        msg = f"Invalid label ID format: {label_id}"
+        raise SecurityError(msg)
     return label_id
 
 
@@ -460,10 +463,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

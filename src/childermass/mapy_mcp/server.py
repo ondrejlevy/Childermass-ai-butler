@@ -332,27 +332,27 @@ def mapy_compare_routes(
                     route_type=rt,
                     geometry_format="polyline",
                 )
-                comparison.append({
-                    "route_type": rt,
-                    "duration_seconds": route.duration,
-                    "duration_minutes": round(route.duration / 60, 1),
-                    "length_meters": route.length,
-                    "length_km": round(route.length / 1000, 2),
-                })
+                comparison.append(
+                    {
+                        "route_type": rt,
+                        "duration_seconds": route.duration,
+                        "duration_minutes": round(route.duration / 60, 1),
+                        "length_meters": route.length,
+                        "length_km": round(route.length / 1000, 2),
+                    }
+                )
             except Exception as e:
-                comparison.append({
-                    "route_type": rt,
-                    "error": sanitize_error_message(e),
-                })
+                comparison.append(
+                    {
+                        "route_type": rt,
+                        "error": sanitize_error_message(e),
+                    }
+                )
 
         # Sort by duration (fastest first), errors last
-        comparison.sort(
-            key=lambda x: float(str(x.get("duration_seconds", float("inf"))))
-        )
+        comparison.sort(key=lambda x: float(str(x.get("duration_seconds", float("inf")))))
 
-        fastest = next(
-            (c for c in comparison if "duration_seconds" in c), None
-        )
+        fastest = next((c for c in comparison if "duration_seconds" in c), None)
 
         return {
             "start": start,
@@ -418,14 +418,16 @@ def mapy_find_nearest(
         results = []
         if matrix.matrix and len(matrix.matrix) > 0:
             for i, entry in enumerate(matrix.matrix[0]):
-                results.append({
-                    "destination_index": i,
-                    "destination": f"{dest_list[i][0]},{dest_list[i][1]}",
-                    "duration_seconds": entry.duration,
-                    "duration_minutes": round(entry.duration / 60, 1),
-                    "length_meters": entry.length,
-                    "length_km": round(entry.length / 1000, 2),
-                })
+                results.append(
+                    {
+                        "destination_index": i,
+                        "destination": f"{dest_list[i][0]},{dest_list[i][1]}",
+                        "duration_seconds": entry.duration,
+                        "duration_minutes": round(entry.duration / 60, 1),
+                        "length_meters": entry.length,
+                        "length_km": round(entry.length / 1000, 2),
+                    }
+                )
 
         # Sort by duration
         results.sort(key=lambda x: float(str(x.get("duration_seconds", float("inf")))))
@@ -550,23 +552,23 @@ def _parse_coords(coord_str: str) -> tuple[float, float]:
         SecurityError: If format is invalid.
     """
     if not coord_str or not isinstance(coord_str, str):
-        raise SecurityError("Coordinates must be a non-empty string in 'lat,lon' format")
+        msg = "Coordinates must be a non-empty string in 'lat,lon' format"
+        raise SecurityError(msg)
 
     parts = coord_str.strip().split(",")
     if len(parts) != 2:
-        raise SecurityError(
-            f"Invalid coordinate format: '{coord_str}' (expected 'lat,lon')"
-        )
+        msg = f"Invalid coordinate format: '{coord_str}' (expected 'lat,lon')"
+        raise SecurityError(msg)
 
     try:
         lat = float(parts[0].strip())
         lon = float(parts[1].strip())
     except ValueError:
-        raise SecurityError(
-            f"Invalid coordinate values in: '{coord_str}' (expected numbers)"
-        )
+        msg = f"Invalid coordinate values in: '{coord_str}' (expected numbers)"
+        raise SecurityError(msg)
 
     from .security import validate_coordinates
+
     validate_coordinates(lat, lon)
 
     return lat, lon

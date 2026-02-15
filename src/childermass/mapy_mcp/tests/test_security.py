@@ -5,20 +5,20 @@ import json
 import pytest
 
 from childermass.mapy_mcp.security import (
-    SecurityError,
-    validate_query,
-    validate_coordinates,
-    validate_language,
-    validate_route_type,
-    validate_geocode_type,
-    validate_limit,
-    validate_waypoints,
-    validate_positions,
-    validate_departure,
-    validate_geometry_format,
     RateLimiter,
-    sanitize_error_message,
+    SecurityError,
     audit_log,
+    sanitize_error_message,
+    validate_coordinates,
+    validate_departure,
+    validate_geocode_type,
+    validate_geometry_format,
+    validate_language,
+    validate_limit,
+    validate_positions,
+    validate_query,
+    validate_route_type,
+    validate_waypoints,
 )
 
 
@@ -352,9 +352,7 @@ class TestSanitizeErrorMessage:
         assert "apiKey=[API_KEY]" in msg
 
     def test_removes_api_key_from_header(self):
-        msg = sanitize_error_message(
-            Exception("Header X-Mapy-Api-Key: mySecretApiKey123")
-        )
+        msg = sanitize_error_message(Exception("Header X-Mapy-Api-Key: mySecretApiKey123"))
         assert "mySecretApiKey123" not in msg
         assert "X-Mapy-Api-Key: [API_KEY]" in msg
 
@@ -385,12 +383,8 @@ class TestAuditLog:
 
     def test_writes_log_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "mapy-audit.log"
-        monkeypatch.setattr(
-            "childermass.mapy_mcp.security.AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.mapy_mcp.security.CONFIG_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.mapy_mcp.security.AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.mapy_mcp.security.CONFIG_DIR", tmp_path)
 
         audit_log("geocode", {"query": "Praha", "count": 3})
 
@@ -403,12 +397,8 @@ class TestAuditLog:
 
     def test_writes_failure_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "mapy-audit.log"
-        monkeypatch.setattr(
-            "childermass.mapy_mcp.security.AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.mapy_mcp.security.CONFIG_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.mapy_mcp.security.AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.mapy_mcp.security.CONFIG_DIR", tmp_path)
 
         audit_log("plan_route", {"error": "timeout", "start": "50,14"})
 
@@ -428,16 +418,19 @@ class TestAuthKeyring:
 
     def test_keyring_detection(self):
         from childermass.mapy_mcp.auth import KEYRING_AVAILABLE
+
         # Should be a boolean
         assert isinstance(KEYRING_AVAILABLE, bool)
 
     def test_credentials_path(self):
         from childermass.mapy_mcp.auth import API_KEY_FILE, CONFIG_DIR
+
         assert str(API_KEY_FILE).endswith("mapy_api_key")
         assert str(CONFIG_DIR).endswith(".childermass")
 
     def test_authentication_error_raised(self, monkeypatch):
-        from childermass.mapy_mcp.auth import get_api_key, AuthenticationError
+        from childermass.mapy_mcp.auth import AuthenticationError, get_api_key
+
         # Disable keyring
         monkeypatch.setattr("childermass.mapy_mcp.auth.KEYRING_AVAILABLE", False)
         # Use non-existent file
@@ -450,11 +443,13 @@ class TestAuthKeyring:
 
     def test_set_api_key_empty(self):
         from childermass.mapy_mcp.auth import set_api_key
+
         with pytest.raises(ValueError, match="cannot be empty"):
             set_api_key("")
 
     def test_set_api_key_whitespace(self):
         from childermass.mapy_mcp.auth import set_api_key
+
         with pytest.raises(ValueError, match="cannot be empty"):
             set_api_key("   ")
 
@@ -470,6 +465,7 @@ class TestClientValidation:
     def _get_client(self):
         """Create a client with a fake API key (no real API calls)."""
         from childermass.mapy_mcp.client import MapyClient
+
         return MapyClient(api_key="fake_test_key_for_validation")
 
     def test_geocode_empty_query(self):
@@ -562,11 +558,13 @@ class TestServerHelpers:
 
     def test_parse_coords_valid(self):
         from childermass.mapy_mcp.server import _parse_coords
+
         assert _parse_coords("50.0755,14.4378") == (50.0755, 14.4378)
         assert _parse_coords("  49.1951 , 16.6068  ") == (49.1951, 16.6068)
 
     def test_parse_coords_invalid_format(self):
         from childermass.mapy_mcp.server import _parse_coords
+
         with pytest.raises(SecurityError, match="Invalid coordinate format"):
             _parse_coords("50.0755")
 
@@ -575,15 +573,18 @@ class TestServerHelpers:
 
     def test_parse_coords_invalid_values(self):
         from childermass.mapy_mcp.server import _parse_coords
+
         with pytest.raises(SecurityError, match="Invalid coordinate values"):
             _parse_coords("abc,def")
 
     def test_parse_coords_out_of_range(self):
         from childermass.mapy_mcp.server import _parse_coords
+
         with pytest.raises(SecurityError, match="Invalid latitude"):
             _parse_coords("91,14")
 
     def test_parse_coords_empty(self):
         from childermass.mapy_mcp.server import _parse_coords
+
         with pytest.raises(SecurityError, match="non-empty string"):
             _parse_coords("")

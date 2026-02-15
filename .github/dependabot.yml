@@ -1,0 +1,229 @@
+version: 2
+updates:
+  # ===========================================================================
+  # GitHub Actions Dependencies
+  # ===========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+
+  # ===========================================================================
+  # Python Dependencies - Calendar MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/calendar_mcp"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "calendar-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Contacts MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/contacts_mcp"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "contacts-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Gmail MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/gmail_mcp"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "gmail-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Keep MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/keep_mcp"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "keep-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Mapy MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/mapy_mcp"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "mapy-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Memory MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/memory_mcp"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "memory-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Network MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/network_mcp"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "network-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Places MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/places_mcp"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "places-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Protect MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/protect_mcp"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "protect-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Tasks MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/tasks_mcp"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "tasks-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase
+
+  # ===========================================================================
+  # Python Dependencies - Weather MCP
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/src/childermass/weather_mcp"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "weather-mcp"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: increase

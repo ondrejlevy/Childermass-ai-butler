@@ -1,0 +1,123 @@
+# Ruff Configuration for Childermass Project
+# https://docs.astral.sh/ruff/
+
+# ===========================================================================
+# General Settings
+# ===========================================================================
+target-version = "py312"
+line-length = 100
+indent-width = 4
+
+# ===========================================================================
+# File Selection
+# ===========================================================================
+extend-exclude = [
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+# ===========================================================================
+# Linting Rules
+# ===========================================================================
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "G",      # flake8-logging-format
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "TCH",    # flake8-type-checking
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "PL",     # pylint
+    "TRY",    # tryceratops
+    "FLY",    # flynt
+    "PERF",   # perflint
+    "RUF",    # ruff-specific rules
+    "S",      # bandit (security)
+]
+
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "PLR0913", # too many arguments
+    "TRY003",  # avoid long messages outside exception class
+    "S101",    # use of assert (OK in tests)
+    "S105",    # possible hardcoded password (too many false positives)
+    "S106",    # possible hardcoded password (too many false positives)
+]
+
+# ===========================================================================
+# Per-file Ignores
+# ===========================================================================
+[lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",    # allow assert in tests
+    "ARG",     # allow unused arguments in test fixtures
+    "PLR2004", # allow magic values in tests
+    "PLC0415", # allow imports in functions (for test isolation)
+]
+"__init__.py" = [
+    "F401",    # allow unused imports in __init__.py
+]
+"**/auth.py" = [
+    "PLC0415", # late imports for optional dependencies (keyring)
+    "S110",    # try-except-pass for optional features
+]
+"**/security.py" = [
+    "S110",    # try-except-pass in audit logging (must not crash)
+]
+"**/client.py" = [
+    "TRY300",  # complex business logic in try blocks (acceptable pattern)
+]
+"**/server.py" = [
+    "TRY300",  # complex MCP handler logic in try blocks (acceptable pattern)
+]
+
+# ===========================================================================
+# Plugin Configurations
+# ===========================================================================
+[lint.isort]
+known-first-party = ["childermass"]
+force-single-line = false
+lines-after-imports = 2
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pydocstyle]
+convention = "google"
+
+# ===========================================================================
+# Formatting
+# ===========================================================================
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

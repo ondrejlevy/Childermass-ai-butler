@@ -17,6 +17,7 @@ from . import client
 from .client import _place_to_dict
 from .security import SecurityError, sanitize_error_message
 
+
 # Create FastMCP server
 mcp = FastMCP("childermass-places")
 
@@ -129,14 +130,10 @@ def places_nearby_search(
     """
     try:
         inc_types = (
-            [t.strip() for t in included_types.split(",") if t.strip()]
-            if included_types
-            else None
+            [t.strip() for t in included_types.split(",") if t.strip()] if included_types else None
         )
         exc_types = (
-            [t.strip() for t in excluded_types.split(",") if t.strip()]
-            if excluded_types
-            else None
+            [t.strip() for t in excluded_types.split(",") if t.strip()] if excluded_types else None
         )
 
         places = client.nearby_search(
@@ -197,9 +194,7 @@ def places_search_with_filters(
     """
     try:
         price_list = (
-            [p.strip() for p in price_levels.split(",") if p.strip()]
-            if price_levels
-            else None
+            [p.strip() for p in price_levels.split(",") if p.strip()] if price_levels else None
         )
 
         places = client.search_with_filters(
@@ -275,11 +270,7 @@ def places_get_opening_hours(
         and weekly schedule.
     """
     try:
-
-        mask = (
-            "id,displayName,regularOpeningHours,"
-            "currentOpeningHours,businessStatus"
-        )
+        mask = "id,displayName,regularOpeningHours,currentOpeningHours,businessStatus"
         place = client.get_place_details(
             place_id,
             language_code=language_code or None,
@@ -548,9 +539,7 @@ def places_find_restaurants(
         query = " ".join(query_parts)
 
         price_list = (
-            [p.strip() for p in price_levels.split(",") if p.strip()]
-            if price_levels
-            else None
+            [p.strip() for p in price_levels.split(",") if p.strip()] if price_levels else None
         )
 
         places = client.search_with_filters(

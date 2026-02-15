@@ -351,10 +351,12 @@ class TestValidatePriceLevels:
         assert result == ["PRICE_LEVEL_MODERATE"]
 
     def test_multiple_levels(self):
-        result = validate_price_levels([
-            "PRICE_LEVEL_INEXPENSIVE",
-            "PRICE_LEVEL_MODERATE",
-        ])
+        result = validate_price_levels(
+            [
+                "PRICE_LEVEL_INEXPENSIVE",
+                "PRICE_LEVEL_MODERATE",
+            ]
+        )
         assert result == ["PRICE_LEVEL_INEXPENSIVE", "PRICE_LEVEL_MODERATE"]
 
     def test_strips_whitespace(self):
@@ -430,10 +432,12 @@ class TestValidateEvConnectorTypes:
         assert result == ["EV_CONNECTOR_TYPE_TYPE_2"]
 
     def test_multiple_types(self):
-        result = validate_ev_connector_types([
-            "EV_CONNECTOR_TYPE_CCS_COMBO_2",
-            "EV_CONNECTOR_TYPE_CHADEMO",
-        ])
+        result = validate_ev_connector_types(
+            [
+                "EV_CONNECTOR_TYPE_CCS_COMBO_2",
+                "EV_CONNECTOR_TYPE_CHADEMO",
+            ]
+        )
         assert len(result) == 2
 
     def test_rejects_invalid(self):
@@ -650,10 +654,12 @@ class TestCombinedValidations:
         validate_latitude(50.0755)
         validate_longitude(14.4378)
         validate_radius(10000.0)
-        connectors = validate_ev_connector_types([
-            "EV_CONNECTOR_TYPE_CCS_COMBO_2",
-            "EV_CONNECTOR_TYPE_TYPE_2",
-        ])
+        connectors = validate_ev_connector_types(
+            [
+                "EV_CONNECTOR_TYPE_CCS_COMBO_2",
+                "EV_CONNECTOR_TYPE_TYPE_2",
+            ]
+        )
 
         assert len(connectors) == 2
 

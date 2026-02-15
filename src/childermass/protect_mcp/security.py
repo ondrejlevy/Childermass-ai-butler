@@ -17,8 +17,6 @@ from typing import Any
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -58,14 +56,14 @@ def validate_protect_id(value: str, field_name: str = "ID") -> str:
     Returns normalised ID. Raises SecurityError on invalid input.
     """
     if not value or not isinstance(value, str):
-        raise SecurityError(f"{field_name} is required")
+        msg = f"{field_name} is required"
+        raise SecurityError(msg)
 
     value = value.strip().lower()
 
     if not _PROTECT_ID_PATTERN.match(value):
-        raise SecurityError(
-            f"Invalid {field_name} format: expected 24-char hex string"
-        )
+        msg = f"Invalid {field_name} format: expected 24-char hex string"
+        raise SecurityError(msg)
 
     return value
 
@@ -97,19 +95,18 @@ def validate_timestamp(ts: int | float, field_name: str = "timestamp") -> int:
     Returns integer timestamp. Raises SecurityError if out of bounds.
     """
     if not isinstance(ts, (int, float)):
-        raise SecurityError(f"{field_name} must be a number")
+        msg = f"{field_name} must be a number"
+        raise SecurityError(msg)
 
     ts = int(ts)
 
     if ts < _MIN_TIMESTAMP_MS:
-        raise SecurityError(
-            f"{field_name} is too far in the past (before 2020)"
-        )
+        msg = f"{field_name} is too far in the past (before 2020)"
+        raise SecurityError(msg)
 
     if ts > _MAX_TIMESTAMP_MS:
-        raise SecurityError(
-            f"{field_name} is too far in the future (after 2035)"
-        )
+        msg = f"{field_name} is too far in the future (after 2035)"
+        raise SecurityError(msg)
 
     return ts
 
@@ -124,19 +121,17 @@ def validate_time_range(start_ms: int, end_ms: int) -> tuple[int, int]:
     end = validate_timestamp(end_ms, "end")
 
     if end <= start:
-        raise SecurityError("end must be after start")
+        msg = "end must be after start"
+        raise SecurityError(msg)
 
     if (end - start) > MAX_EVENT_RANGE_MS:
-        raise SecurityError(
-            f"Time range too large: max {MAX_EVENT_RANGE_MS // (24*60*60*1000)} days"
-        )
+        msg = f"Time range too large: max {MAX_EVENT_RANGE_MS // (24 * 60 * 60 * 1000)} days"
+        raise SecurityError(msg)
 
     return start, end
 
 
-def validate_snapshot_dimensions(
-    width: int | None, height: int | None
-) -> tuple[int, int]:
+def validate_snapshot_dimensions(width: int | None, height: int | None) -> tuple[int, int]:
     """
     Validate and normalise snapshot dimensions.
 
@@ -146,17 +141,16 @@ def validate_snapshot_dimensions(
     h = height or DEFAULT_SNAPSHOT_HEIGHT
 
     if not isinstance(w, int) or not isinstance(h, int):
-        raise SecurityError("Snapshot dimensions must be integers")
+        msg = "Snapshot dimensions must be integers"
+        raise SecurityError(msg)
 
     if w < MIN_SNAPSHOT_DIM or h < MIN_SNAPSHOT_DIM:
-        raise SecurityError(
-            f"Snapshot dimensions too small: min {MIN_SNAPSHOT_DIM}x{MIN_SNAPSHOT_DIM}"
-        )
+        msg = f"Snapshot dimensions too small: min {MIN_SNAPSHOT_DIM}x{MIN_SNAPSHOT_DIM}"
+        raise SecurityError(msg)
 
     if w > MAX_SNAPSHOT_DIM or h > MAX_SNAPSHOT_DIM:
-        raise SecurityError(
-            f"Snapshot dimensions too large: max {MAX_SNAPSHOT_DIM}x{MAX_SNAPSHOT_DIM}"
-        )
+        msg = f"Snapshot dimensions too large: max {MAX_SNAPSHOT_DIM}x{MAX_SNAPSHOT_DIM}"
+        raise SecurityError(msg)
 
     return w, h
 
@@ -169,10 +163,8 @@ def validate_event_types(types: list[str] | None) -> list[str] | None:
     allowed = {"motion", "smartDetectZone", "ring", "sensorMotion", "sensorContact", "sensorAlarm"}
     for t in types:
         if t not in allowed:
-            raise SecurityError(
-                f"Invalid event type: {t!r}. "
-                f"Allowed: {', '.join(sorted(allowed))}"
-            )
+            msg = f"Invalid event type: {t!r}. Allowed: {', '.join(sorted(allowed))}"
+            raise SecurityError(msg)
 
     return types
 
@@ -185,10 +177,8 @@ def validate_smart_detect_types(types: list[str] | None) -> list[str] | None:
     allowed = {"person", "vehicle", "package", "animal", "face", "licensePlate"}
     for t in types:
         if t not in allowed:
-            raise SecurityError(
-                f"Invalid smart detection type: {t!r}. "
-                f"Allowed: {', '.join(sorted(allowed))}"
-            )
+            msg = f"Invalid smart detection type: {t!r}. Allowed: {', '.join(sorted(allowed))}"
+            raise SecurityError(msg)
 
     return types
 
@@ -196,10 +186,12 @@ def validate_smart_detect_types(types: list[str] | None) -> list[str] | None:
 def validate_max_results(value: int, maximum: int = MAX_EVENTS_PER_QUERY) -> int:
     """Validate max_results parameter."""
     if not isinstance(value, int) or value < 1:
-        raise SecurityError("max_results must be a positive integer")
+        msg = "max_results must be a positive integer"
+        raise SecurityError(msg)
 
     if value > maximum:
-        raise SecurityError(f"max_results too large: max {maximum}")
+        msg = f"max_results too large: max {maximum}"
+        raise SecurityError(msg)
 
     return value
 
@@ -207,13 +199,16 @@ def validate_max_results(value: int, maximum: int = MAX_EVENTS_PER_QUERY) -> int
 def validate_hours(hours: int | float) -> int:
     """Validate hours parameter for recent activity queries."""
     if not isinstance(hours, (int, float)):
-        raise SecurityError("hours must be a number")
+        msg = "hours must be a number"
+        raise SecurityError(msg)
 
     hours = int(hours)
     if hours < 1:
-        raise SecurityError("hours must be at least 1")
+        msg = "hours must be at least 1"
+        raise SecurityError(msg)
     if hours > 168:  # 7 days
-        raise SecurityError("hours cannot exceed 168 (7 days)")
+        msg = "hours cannot exceed 168 (7 days)"
+        raise SecurityError(msg)
 
     return hours
 
@@ -225,28 +220,30 @@ def validate_nvr_address(address: str) -> str:
     Prevents injection attacks in URL construction.
     """
     if not address or not isinstance(address, str):
-        raise SecurityError("NVR address is required")
+        msg = "NVR address is required"
+        raise SecurityError(msg)
 
     # Reject dangerous characters BEFORE stripping
     if any(c in address for c in ["\n", "\r", "\0", "'", '"', ";", "&", "|"]):
-        raise SecurityError("NVR address contains invalid characters")
+        msg = "NVR address contains invalid characters"
+        raise SecurityError(msg)
 
     address = address.strip()
 
     # Reject spaces (after strip, so leading/trailing whitespace is ok)
     if " " in address:
-        raise SecurityError("NVR address contains invalid characters")
+        msg = "NVR address contains invalid characters"
+        raise SecurityError(msg)
 
     # Must look like an IP or hostname
-    ip_pattern = re.compile(
-        r"^(\d{1,3}\.){3}\d{1,3}$"
-    )
+    ip_pattern = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$")
     hostname_pattern = re.compile(
         r"^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$"
     )
 
     if not ip_pattern.match(address) and not hostname_pattern.match(address):
-        raise SecurityError(f"Invalid NVR address format: {address}")
+        msg = f"Invalid NVR address format: {address}"
+        raise SecurityError(msg)
 
     return address
 
@@ -369,10 +366,8 @@ class RateLimiter:
     def check(self, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

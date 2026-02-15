@@ -15,6 +15,7 @@ import logging
 import os
 from pathlib import Path
 
+
 logger = logging.getLogger(__name__)
 
 # Default paths
@@ -53,9 +54,7 @@ def _is_keyring_available() -> bool:
 
 def get_config_path() -> Path:
     """Get NVR configuration path from env or default."""
-    return Path(
-        os.getenv("PROTECT_CONFIG_PATH", str(DEFAULT_CONFIG_PATH))
-    )
+    return Path(os.getenv("PROTECT_CONFIG_PATH", str(DEFAULT_CONFIG_PATH)))
 
 
 def _save_to_keyring(key: str, value: str) -> bool:
@@ -67,10 +66,11 @@ def _save_to_keyring(key: str, value: str) -> bool:
         import keyring
 
         keyring.set_password(KEYRING_SERVICE, key, value)
-        return True
     except Exception as e:
         logger.warning("Keyring save failed: %s", e)
         return False
+    else:
+        return True
 
 
 def _load_from_keyring(key: str) -> str | None:
@@ -96,9 +96,10 @@ def _delete_from_keyring(key: str) -> bool:
         import keyring
 
         keyring.delete_password(KEYRING_SERVICE, key)
-        return True
     except Exception:
         return False
+    else:
+        return True
 
 
 def load_config() -> dict | None:
@@ -117,7 +118,7 @@ def load_config() -> dict | None:
         with open(config_path) as f:
             config = json.load(f)
     except (json.JSONDecodeError, OSError) as e:
-        logger.error("Failed to load config: %s", e)
+        logger.exception("Failed to load config: %s", e)
         return None
 
     # Try to load password from keyring
@@ -169,11 +170,9 @@ def save_config(
     config_path.chmod(0o600)
 
     if saved_to_keyring:
-        print(f"✓ Password stored in system keyring ({KEYRING_SERVICE})")
-        print(f"✓ Config saved to {config_path}")
+        pass
     else:
-        print(f"⚠ Keyring unavailable, all credentials saved to {config_path}")
-        print("  Consider installing keyring backend for better security")
+        pass
 
 
 def get_nvr_url(config: dict | None = None) -> str:
@@ -186,10 +185,10 @@ def get_nvr_url(config: dict | None = None) -> str:
         config = load_config()
 
     if config is None:
-        raise RuntimeError(
-            "NVR not configured. Run setup first:\n"
-            "  python -m childermass.protect_mcp.auth --setup"
+        msg = (
+            "NVR not configured. Run setup first:\n  python -m childermass.protect_mcp.auth --setup"
         )
+        raise RuntimeError(msg)
 
     host = config["host"]
     port = config.get("port", 443)
@@ -213,10 +212,10 @@ def get_credentials(config: dict | None | object = _GET_CREDENTIALS_SENTINEL) ->
         config = load_config()
 
     if config is None:
-        raise RuntimeError(
-            "NVR not configured. Run setup first:\n"
-            "  python -m childermass.protect_mcp.auth --setup"
+        msg = (
+            "NVR not configured. Run setup first:\n  python -m childermass.protect_mcp.auth --setup"
         )
+        raise RuntimeError(msg)
 
     return config["username"], config["password"]
 
@@ -234,23 +233,17 @@ def setup_interactive() -> None:
     """
     Interactive setup flow for NVR connection.
     """
-    print("\n=== Childermass UniFi Protect MCP – Setup ===\n")
 
     # Check existing config
     existing = load_config()
     if existing:
-        print("Existing configuration found:")
-        print(f"  NVR: {existing['host']}:{existing.get('port', 443)}")
-        print(f"  User: {existing['username']}")
         resp = input("\nOverwrite? [y/N]: ").strip().lower()
         if resp != "y":
-            print("Setup cancelled.")
             return
 
     # Gather info
     host = input("NVR IP address or hostname: ").strip()
     if not host:
-        print("✗ Host is required")
         return
 
     port_str = input("Port [443]: ").strip()
@@ -258,12 +251,10 @@ def setup_interactive() -> None:
 
     username = input("Username: ").strip()
     if not username:
-        print("✗ Username is required")
         return
 
     password = getpass.getpass("Password: ")
     if not password:
-        print("✗ Password is required")
         return
 
     verify_ssl_str = input("Verify SSL certificate? [y/N]: ").strip().lower()
@@ -278,21 +269,12 @@ def setup_interactive() -> None:
         verify_ssl=ssl_verify,
     )
 
-    print("\n=== ✓ Configuration saved! ===")
-    print(f"\nNVR: https://{host}:{port}")
-    print(f"User: {username}")
-    print(f"SSL verify: {ssl_verify}")
-    print("\nYou can now use the Protect MCP server.\n")
-
 
 def test_connection() -> None:
     """Test connectivity to the NVR."""
     config = load_config()
     if config is None:
-        print("✗ No configuration found. Run --setup first.")
         return
-
-    print(f"\n→ Testing connection to {config['host']}...")
 
     try:
         import httpx
@@ -319,8 +301,6 @@ def test_connection() -> None:
             )
 
             if login_resp.status_code == 200:
-                print("✓ Authentication successful!")
-
                 # Step 3: Test Protect API
                 csrf_updated = login_resp.headers.get(
                     "x-updated-csrf-token",
@@ -337,54 +317,36 @@ def test_connection() -> None:
                     cameras = data.get("cameras", [])
                     sensors = data.get("sensors", [])
                     lights = data.get("lights", [])
-                    nvr = data.get("nvr", {})
+                    data.get("nvr", {})
 
-                    print("✓ Protect API accessible!")
-                    print(f"  NVR: {nvr.get('name', 'unknown')} "
-                          f"(v{nvr.get('version', '?')})")
-                    print(f"  Cameras: {len(cameras)}")
                     for cam in cameras:
-                        is_db = cam.get("featureFlags", {}).get("isDoorbell", False)
-                        marker = " 🔔" if is_db else ""
-                        print(f"    • {cam.get('name', '?')} "
-                              f"({cam.get('state', '?')}){marker}")
+                        cam.get("featureFlags", {}).get("isDoorbell", False)
                     if sensors:
-                        print(f"  Sensors: {len(sensors)}")
-                        for s in sensors:
-                            print(f"    • {s.get('name', '?')}")
+                        for _s in sensors:
+                            pass
                     if lights:
-                        print(f"  Lights: {len(lights)}")
-                        for light_dev in lights:
-                            print(f"    • {light_dev.get('name', '?')}")
+                        for _light_dev in lights:
+                            pass
                 else:
-                    print(f"✗ Protect API returned {bootstrap_resp.status_code}")
+                    pass
             elif login_resp.status_code == 401:
-                print("✗ Authentication failed – invalid username or password")
+                pass
             else:
-                print(f"✗ Login returned HTTP {login_resp.status_code}")
+                pass
 
     except httpx.ConnectError:
-        print(f"✗ Cannot connect to {config['host']}")
-        print("  Check that the NVR IP is correct and reachable")
-    except Exception as e:
-        print(f"✗ Connection test failed: {e}")
+        pass
+    except Exception:
+        pass
 
 
 def show_config() -> None:
     """Display current configuration (without password)."""
     config = load_config()
     if config is None:
-        print("No configuration found. Run --setup first.")
         return
 
-    storage = "keyring + file" if _is_keyring_available() else "file only"
-    print(f"Storage backend: {storage}\n")
-    print(f"NVR host: {config['host']}")
-    print(f"NVR port: {config.get('port', 443)}")
-    print(f"Username: {config['username']}")
-    print(f"Password: {'********' if config.get('password') else '(not set)'}")
-    print(f"SSL verify: {config.get('verify_ssl', False)}")
-    print(f"Config path: {get_config_path()}")
+    "keyring + file" if _is_keyring_available() else "file only"
 
 
 def revoke_config() -> None:
@@ -394,8 +356,6 @@ def revoke_config() -> None:
     config_path = get_config_path()
     if config_path.exists():
         config_path.unlink()
-
-    print("✓ Configuration and credentials deleted")
 
 
 def main() -> None:

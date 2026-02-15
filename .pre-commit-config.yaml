@@ -1,0 +1,149 @@
+# Pre-commit Configuration for Childermass
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # ===========================================================================
+  # General Checks
+  # ===========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom YAML tags
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+      - id: fix-byte-order-marker
+
+  # ===========================================================================
+  # Python Code Formatting
+  # ===========================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      # Run the formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.12
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black]
+
+  # ===========================================================================
+  # Type Checking
+  # ===========================================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --no-strict-optional]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+        exclude: ^tests/
+
+  # ===========================================================================
+  # Security Checks
+  # ===========================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml, -r, src/]
+        additional_dependencies: ["bandit[toml]"]
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.69.0
+    hooks:
+      - id: trufflehog
+        name: TruffleHog
+        entry: bash -c 'trufflehog filesystem . --only-verified --fail'
+        language: system
+        pass_filenames: false
+
+  # ===========================================================================
+  # YAML/JSON/TOML Formatting
+  # ===========================================================================
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.12.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [--autofix, --indent, '2']
+      - id: pretty-format-toml
+        args: [--autofix]
+
+  # ===========================================================================
+  # Markdown
+  # ===========================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: [--fix, --disable, MD013, MD033]
+
+  # ===========================================================================
+  # Python Dependencies
+  # ===========================================================================
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.2
+    hooks:
+      - id: pip-audit
+        args: [--skip-editable]
+
+  # ===========================================================================
+  # Git Commit Messages
+  # ===========================================================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.15.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+# ===========================================================================
+# Configuration
+# ===========================================================================
+default_language_version:
+  python: python3.12
+
+fail_fast: false
+
+exclude: |
+  (?x)^(
+      \.git/|
+      \.mypy_cache/|
+      \.pytest_cache/|
+      \.ruff_cache/|
+      __pycache__/|
+      \.venv/|
+      venv/|
+      build/|
+      dist/|
+      .*\.egg-info/|
+      .*-credentials\.json|
+      .*-token.*\.json|
+      \.opencode/opencode\.json
+  )$

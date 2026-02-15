@@ -56,9 +56,7 @@ class TestValidateCalendarId:
         assert result == "user@gmail.com"
 
     def test_group_calendar(self):
-        result = validate_calendar_id(
-            "company.com_abc123@group.calendar.google.com"
-        )
+        result = validate_calendar_id("company.com_abc123@group.calendar.google.com")
         assert "group.calendar.google.com" in result
 
     def test_strips_whitespace(self):
@@ -137,10 +135,7 @@ class TestValidateDatetime:
         assert validate_datetime("2024-01-15") == "2024-01-15"
 
     def test_datetime_utc(self):
-        assert (
-            validate_datetime("2024-01-15T10:00:00Z")
-            == "2024-01-15T10:00:00Z"
-        )
+        assert validate_datetime("2024-01-15T10:00:00Z") == "2024-01-15T10:00:00Z"
 
     def test_datetime_positive_offset(self):
         result = validate_datetime("2024-01-15T10:00:00+01:00")
@@ -299,9 +294,7 @@ class TestValidateAttendees:
             validate_attendees("valid@example.com, not-an-email")
 
     def test_too_many_attendees(self):
-        emails = ", ".join(
-            [f"user{i}@example.com" for i in range(MAX_ATTENDEES + 1)]
-        )
+        emails = ", ".join([f"user{i}@example.com" for i in range(MAX_ATTENDEES + 1)])
         with pytest.raises(SecurityError, match="Too many attendees"):
             validate_attendees(emails)
 
@@ -434,9 +427,7 @@ class TestValidateColorId:
 
 class TestValidateDateRange:
     def test_valid_range(self):
-        t_min, t_max = validate_date_range(
-            "2024-01-15T00:00:00Z", "2024-01-31T23:59:59Z"
-        )
+        t_min, t_max = validate_date_range("2024-01-15T00:00:00Z", "2024-01-31T23:59:59Z")
         assert t_min == "2024-01-15T00:00:00Z"
         assert t_max == "2024-01-31T23:59:59Z"
 
@@ -664,12 +655,8 @@ class TestRateLimiter:
 class TestAuditLog:
     def test_audit_entry_json(self, tmp_path, monkeypatch):
         log_file = tmp_path / "test-audit.log"
-        monkeypatch.setattr(
-            "childermass.calendar_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.calendar_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.calendar_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.calendar_mcp.security._AUDIT_DIR", tmp_path)
 
         # Clear any cached logger handlers
         logger = logging.getLogger("childermass.calendar_mcp.audit")
@@ -691,12 +678,8 @@ class TestAuditLog:
 
     def test_audit_failure_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "test-audit.log"
-        monkeypatch.setattr(
-            "childermass.calendar_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.calendar_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.calendar_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.calendar_mcp.security._AUDIT_DIR", tmp_path)
 
         logger = logging.getLogger("childermass.calendar_mcp.audit")
         logger.handlers.clear()
@@ -834,9 +817,7 @@ class TestClientValidation:
         with pytest.raises(SecurityError):
             from childermass.calendar_mcp.client import list_recurring_instances
 
-            list_recurring_instances(
-                calendar_id="primary", event_id="ab"
-            )
+            list_recurring_instances(calendar_id="primary", event_id="ab")
 
     def test_query_freebusy_validates_datetime(self):
         """Invalid datetime should be rejected."""

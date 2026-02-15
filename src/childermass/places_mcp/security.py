@@ -18,8 +18,6 @@ from typing import Any
 class SecurityError(Exception):
     """Raised when security validation fails."""
 
-    pass
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -81,76 +79,210 @@ VALID_EV_CONNECTOR_TYPES = {
 # Full list: https://developers.google.com/maps/documentation/places/web-service/place-types
 VALID_PLACE_TYPES: set[str] = {
     # Automotive
-    "car_dealer", "car_rental", "car_repair", "car_wash",
-    "electric_vehicle_charging_station", "gas_station", "parking", "rest_stop",
+    "car_dealer",
+    "car_rental",
+    "car_repair",
+    "car_wash",
+    "electric_vehicle_charging_station",
+    "gas_station",
+    "parking",
+    "rest_stop",
     # Business
     "farm",
     # Culture
-    "art_gallery", "museum", "performing_arts_theater",
+    "art_gallery",
+    "museum",
+    "performing_arts_theater",
     # Education
-    "library", "preschool", "primary_school", "school", "secondary_school",
+    "library",
+    "preschool",
+    "primary_school",
+    "school",
+    "secondary_school",
     "university",
     # Entertainment & recreation
-    "amusement_center", "amusement_park", "aquarium", "banquet_hall",
-    "bowling_alley", "casino", "community_center", "convention_center",
-    "cultural_center", "dog_park", "event_venue", "hiking_area",
-    "historical_landmark", "marina", "movie_rental", "movie_theater",
-    "national_park", "night_club", "park", "tourist_attraction",
-    "visitor_center", "wedding_venue", "zoo",
+    "amusement_center",
+    "amusement_park",
+    "aquarium",
+    "banquet_hall",
+    "bowling_alley",
+    "casino",
+    "community_center",
+    "convention_center",
+    "cultural_center",
+    "dog_park",
+    "event_venue",
+    "hiking_area",
+    "historical_landmark",
+    "marina",
+    "movie_rental",
+    "movie_theater",
+    "national_park",
+    "night_club",
+    "park",
+    "tourist_attraction",
+    "visitor_center",
+    "wedding_venue",
+    "zoo",
     # Finance
-    "accounting", "atm", "bank",
+    "accounting",
+    "atm",
+    "bank",
     # Food & drink
-    "american_restaurant", "bakery", "bar", "barbecue_restaurant",
-    "brazilian_restaurant", "breakfast_restaurant", "brunch_restaurant",
-    "cafe", "chinese_restaurant", "coffee_shop", "fast_food_restaurant",
-    "french_restaurant", "greek_restaurant", "hamburger_restaurant",
-    "ice_cream_shop", "indian_restaurant", "indonesian_restaurant",
-    "italian_restaurant", "japanese_restaurant", "korean_restaurant",
-    "lebanese_restaurant", "meal_delivery", "meal_takeaway",
-    "mediterranean_restaurant", "mexican_restaurant",
-    "middle_eastern_restaurant", "pizza_restaurant", "ramen_restaurant",
-    "restaurant", "sandwich_shop", "seafood_restaurant", "spanish_restaurant",
-    "steak_house", "sushi_restaurant", "thai_restaurant",
-    "turkish_restaurant", "vegan_restaurant", "vegetarian_restaurant",
+    "american_restaurant",
+    "bakery",
+    "bar",
+    "barbecue_restaurant",
+    "brazilian_restaurant",
+    "breakfast_restaurant",
+    "brunch_restaurant",
+    "cafe",
+    "chinese_restaurant",
+    "coffee_shop",
+    "fast_food_restaurant",
+    "french_restaurant",
+    "greek_restaurant",
+    "hamburger_restaurant",
+    "ice_cream_shop",
+    "indian_restaurant",
+    "indonesian_restaurant",
+    "italian_restaurant",
+    "japanese_restaurant",
+    "korean_restaurant",
+    "lebanese_restaurant",
+    "meal_delivery",
+    "meal_takeaway",
+    "mediterranean_restaurant",
+    "mexican_restaurant",
+    "middle_eastern_restaurant",
+    "pizza_restaurant",
+    "ramen_restaurant",
+    "restaurant",
+    "sandwich_shop",
+    "seafood_restaurant",
+    "spanish_restaurant",
+    "steak_house",
+    "sushi_restaurant",
+    "thai_restaurant",
+    "turkish_restaurant",
+    "vegan_restaurant",
+    "vegetarian_restaurant",
     "vietnamese_restaurant",
     # Government
-    "city_hall", "courthouse", "embassy", "fire_station",
-    "local_government_office", "police", "post_office",
+    "city_hall",
+    "courthouse",
+    "embassy",
+    "fire_station",
+    "local_government_office",
+    "police",
+    "post_office",
     # Health & wellness
-    "dental_clinic", "dentist", "doctor", "drugstore", "hospital",
-    "medical_lab", "pharmacy", "physiotherapist", "spa",
+    "dental_clinic",
+    "dentist",
+    "doctor",
+    "drugstore",
+    "hospital",
+    "medical_lab",
+    "pharmacy",
+    "physiotherapist",
+    "spa",
     # Lodging
-    "bed_and_breakfast", "campground", "camping_cabin", "cottage",
-    "extended_stay_hotel", "farmstay", "guest_house", "hostel", "hotel",
-    "lodging", "motel", "private_guest_room", "resort_hotel",
+    "bed_and_breakfast",
+    "campground",
+    "camping_cabin",
+    "cottage",
+    "extended_stay_hotel",
+    "farmstay",
+    "guest_house",
+    "hostel",
+    "hotel",
+    "lodging",
+    "motel",
+    "private_guest_room",
+    "resort_hotel",
     "rv_park",
     # Places of worship
-    "church", "hindu_temple", "mosque", "synagogue",
+    "church",
+    "hindu_temple",
+    "mosque",
+    "synagogue",
     # Services
-    "barber_shop", "beauty_salon", "cemetery", "child_care_agency",
-    "consultant", "courier_service", "electrician", "florist",
-    "funeral_home", "hair_care", "hair_salon", "insurance_agency",
-    "laundry", "lawyer", "locksmith", "moving_company", "painter",
-    "plumber", "real_estate_agency", "roofing_contractor",
-    "storage", "tailor", "telecommunications_service_provider",
-    "travel_agency", "veterinary_care",
+    "barber_shop",
+    "beauty_salon",
+    "cemetery",
+    "child_care_agency",
+    "consultant",
+    "courier_service",
+    "electrician",
+    "florist",
+    "funeral_home",
+    "hair_care",
+    "hair_salon",
+    "insurance_agency",
+    "laundry",
+    "lawyer",
+    "locksmith",
+    "moving_company",
+    "painter",
+    "plumber",
+    "real_estate_agency",
+    "roofing_contractor",
+    "storage",
+    "tailor",
+    "telecommunications_service_provider",
+    "travel_agency",
+    "veterinary_care",
     # Shopping
-    "auto_parts_store", "bicycle_store", "book_store", "cell_phone_store",
-    "clothing_store", "convenience_store", "department_store",
-    "discount_store", "electronics_store", "furniture_store",
-    "gift_shop", "grocery_store", "hardware_store", "home_goods_store",
-    "home_improvement_store", "jewelry_store", "liquor_store",
-    "market", "pet_store", "shoe_store", "shopping_mall",
-    "sporting_goods_store", "store", "supermarket", "wholesaler",
+    "auto_parts_store",
+    "bicycle_store",
+    "book_store",
+    "cell_phone_store",
+    "clothing_store",
+    "convenience_store",
+    "department_store",
+    "discount_store",
+    "electronics_store",
+    "furniture_store",
+    "gift_shop",
+    "grocery_store",
+    "hardware_store",
+    "home_goods_store",
+    "home_improvement_store",
+    "jewelry_store",
+    "liquor_store",
+    "market",
+    "pet_store",
+    "shoe_store",
+    "shopping_mall",
+    "sporting_goods_store",
+    "store",
+    "supermarket",
+    "wholesaler",
     # Sports
-    "athletic_field", "fitness_center", "golf_course", "gym",
-    "playground", "ski_resort", "sports_club", "sports_complex",
-    "stadium", "swimming_pool",
+    "athletic_field",
+    "fitness_center",
+    "golf_course",
+    "gym",
+    "playground",
+    "ski_resort",
+    "sports_club",
+    "sports_complex",
+    "stadium",
+    "swimming_pool",
     # Transportation
-    "airport", "bus_station", "bus_stop", "ferry_terminal",
-    "heliport", "light_rail_station", "park_and_ride",
-    "subway_station", "taxi_stand", "train_station",
-    "transit_depot", "transit_station", "truck_stop",
+    "airport",
+    "bus_station",
+    "bus_stop",
+    "ferry_terminal",
+    "heliport",
+    "light_rail_station",
+    "park_and_ride",
+    "subway_station",
+    "taxi_stand",
+    "train_station",
+    "transit_depot",
+    "transit_station",
+    "truck_stop",
 }
 
 # Field masks – commonly used sets for convenience
@@ -178,9 +310,7 @@ FIELD_MASK_DETAILED = (
 )
 
 # Detail field masks (without places. prefix – used for Place Details)
-DETAIL_FIELD_MASK_BASIC = (
-    "id,displayName,formattedAddress,location,types,primaryType"
-)
+DETAIL_FIELD_MASK_BASIC = "id,displayName,formattedAddress,location,types,primaryType"
 DETAIL_FIELD_MASK_STANDARD = (
     f"{DETAIL_FIELD_MASK_BASIC},"
     "rating,userRatingCount,priceLevel,businessStatus,websiteUri,"
@@ -211,22 +341,23 @@ def validate_place_id(place_id: str) -> str:
     Returns the validated place ID.  Raises SecurityError on invalid input.
     """
     if not place_id or not isinstance(place_id, str):
-        raise SecurityError("Place ID is required")
+        msg = "Place ID is required"
+        raise SecurityError(msg)
 
     place_id = place_id.strip()
 
     if any(c in place_id for c in ["\n", "\r", "\0", "\t"]):
-        raise SecurityError("Place ID contains invalid control characters")
+        msg = "Place ID contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(place_id) > MAX_PLACE_ID_LENGTH:
-        raise SecurityError(
-            f"Place ID too long: {len(place_id)} chars "
-            f"(max {MAX_PLACE_ID_LENGTH})"
-        )
+        msg = f"Place ID too long: {len(place_id)} chars (max {MAX_PLACE_ID_LENGTH})"
+        raise SecurityError(msg)
 
     # Place IDs are typically base64-url-safe + some special chars
     if not re.match(r"^[A-Za-z0-9_\-]+$", place_id):
-        raise SecurityError(f"Invalid Place ID format: {place_id}")
+        msg = f"Invalid Place ID format: {place_id}"
+        raise SecurityError(msg)
 
     return place_id
 
@@ -238,17 +369,18 @@ def validate_query(query: str) -> str:
     Returns the validated query.  Raises SecurityError on invalid input.
     """
     if not query or not isinstance(query, str):
-        raise SecurityError("Search query is required")
+        msg = "Search query is required"
+        raise SecurityError(msg)
 
     query = query.strip()
 
     if any(c in query for c in ["\0", chr(0x1B)]):
-        raise SecurityError("Query contains invalid control characters")
+        msg = "Query contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(query) > MAX_QUERY_LENGTH:
-        raise SecurityError(
-            f"Query too long: {len(query)} chars (max {MAX_QUERY_LENGTH})"
-        )
+        msg = f"Query too long: {len(query)} chars (max {MAX_QUERY_LENGTH})"
+        raise SecurityError(msg)
 
     return query
 
@@ -260,18 +392,18 @@ def validate_autocomplete_input(text: str) -> str:
     Returns the validated input.  Raises SecurityError on invalid input.
     """
     if not text or not isinstance(text, str):
-        raise SecurityError("Autocomplete input is required")
+        msg = "Autocomplete input is required"
+        raise SecurityError(msg)
 
     text = text.strip()
 
     if any(c in text for c in ["\0", chr(0x1B)]):
-        raise SecurityError("Input contains invalid control characters")
+        msg = "Input contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(text) > MAX_AUTOCOMPLETE_INPUT_LENGTH:
-        raise SecurityError(
-            f"Input too long: {len(text)} chars "
-            f"(max {MAX_AUTOCOMPLETE_INPUT_LENGTH})"
-        )
+        msg = f"Input too long: {len(text)} chars (max {MAX_AUTOCOMPLETE_INPUT_LENGTH})"
+        raise SecurityError(msg)
 
     return text
 
@@ -279,14 +411,13 @@ def validate_autocomplete_input(text: str) -> str:
 def validate_latitude(lat: float) -> float:
     """Validate a latitude value.  Must be between -90 and 90."""
     if not isinstance(lat, (int, float)):
-        raise SecurityError(f"Latitude must be a number, got {type(lat)}")
+        msg = f"Latitude must be a number, got {type(lat)}"
+        raise SecurityError(msg)
 
     lat = float(lat)
     if lat < MIN_LATITUDE or lat > MAX_LATITUDE:
-        raise SecurityError(
-            f"Latitude out of range: {lat} "
-            f"(must be {MIN_LATITUDE} to {MAX_LATITUDE})"
-        )
+        msg = f"Latitude out of range: {lat} (must be {MIN_LATITUDE} to {MAX_LATITUDE})"
+        raise SecurityError(msg)
 
     return lat
 
@@ -294,14 +425,13 @@ def validate_latitude(lat: float) -> float:
 def validate_longitude(lng: float) -> float:
     """Validate a longitude value.  Must be between -180 and 180."""
     if not isinstance(lng, (int, float)):
-        raise SecurityError(f"Longitude must be a number, got {type(lng)}")
+        msg = f"Longitude must be a number, got {type(lng)}"
+        raise SecurityError(msg)
 
     lng = float(lng)
     if lng < MIN_LONGITUDE or lng > MAX_LONGITUDE:
-        raise SecurityError(
-            f"Longitude out of range: {lng} "
-            f"(must be {MIN_LONGITUDE} to {MAX_LONGITUDE})"
-        )
+        msg = f"Longitude out of range: {lng} (must be {MIN_LONGITUDE} to {MAX_LONGITUDE})"
+        raise SecurityError(msg)
 
     return lng
 
@@ -313,14 +443,13 @@ def validate_radius(radius: float) -> float:
     Must be between 0 and 50000 (inclusive).
     """
     if not isinstance(radius, (int, float)):
-        raise SecurityError(f"Radius must be a number, got {type(radius)}")
+        msg = f"Radius must be a number, got {type(radius)}"
+        raise SecurityError(msg)
 
     radius = float(radius)
     if radius < MIN_RADIUS or radius > MAX_RADIUS:
-        raise SecurityError(
-            f"Radius out of range: {radius} m "
-            f"(must be {MIN_RADIUS} to {MAX_RADIUS})"
-        )
+        msg = f"Radius out of range: {radius} m (must be {MIN_RADIUS} to {MAX_RADIUS})"
+        raise SecurityError(msg)
 
     return radius
 
@@ -328,13 +457,12 @@ def validate_radius(radius: float) -> float:
 def validate_max_results(count: int) -> int:
     """Validate the max results count.  Must be 1-20."""
     if not isinstance(count, int):
-        raise SecurityError(f"Max results must be an integer, got {type(count)}")
+        msg = f"Max results must be an integer, got {type(count)}"
+        raise SecurityError(msg)
 
     if count < MIN_RESULTS or count > MAX_RESULTS:
-        raise SecurityError(
-            f"Max results out of range: {count} "
-            f"(must be {MIN_RESULTS} to {MAX_RESULTS})"
-        )
+        msg = f"Max results out of range: {count} (must be {MIN_RESULTS} to {MAX_RESULTS})"
+        raise SecurityError(msg)
 
     return count
 
@@ -346,22 +474,26 @@ def validate_place_type(type_: str) -> str:
     Returns the validated type.  Raises SecurityError if unknown.
     """
     if not type_ or not isinstance(type_, str):
-        raise SecurityError("Place type is required")
+        msg = "Place type is required"
+        raise SecurityError(msg)
 
     type_ = type_.strip().lower()
 
     if any(c in type_ for c in ["\n", "\r", "\0"]):
-        raise SecurityError("Place type contains invalid control characters")
+        msg = "Place type contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(type_) > MAX_TYPE_LENGTH:
-        raise SecurityError(f"Place type too long: {len(type_)} chars")
+        msg = f"Place type too long: {len(type_)} chars"
+        raise SecurityError(msg)
 
     if type_ not in VALID_PLACE_TYPES:
-        raise SecurityError(
+        msg = (
             f"Unknown place type: {type_!r}. "
             "See: https://developers.google.com/maps/documentation/"
             "places/web-service/place-types"
         )
+        raise SecurityError(msg)
 
     return type_
 
@@ -376,16 +508,19 @@ def validate_place_types(types: list[str]) -> list[str]:
 def validate_language_code(code: str) -> str:
     """Validate a BCP-47 language code."""
     if not code or not isinstance(code, str):
-        raise SecurityError("Language code is required")
+        msg = "Language code is required"
+        raise SecurityError(msg)
 
     code = code.strip().lower()
 
     if len(code) > MAX_LANGUAGE_CODE_LENGTH:
-        raise SecurityError(f"Language code too long: {code}")
+        msg = f"Language code too long: {code}"
+        raise SecurityError(msg)
 
     # Basic BCP-47 pattern: 2-3 letter language, optional region
     if not re.match(r"^[a-z]{2,3}(-[a-z]{2,4})?$", code):
-        raise SecurityError(f"Invalid language code format: {code}")
+        msg = f"Invalid language code format: {code}"
+        raise SecurityError(msg)
 
     return code
 
@@ -393,15 +528,18 @@ def validate_language_code(code: str) -> str:
 def validate_region_code(code: str) -> str:
     """Validate a CLDR region code (2-char)."""
     if not code or not isinstance(code, str):
-        raise SecurityError("Region code is required")
+        msg = "Region code is required"
+        raise SecurityError(msg)
 
     code = code.strip().lower()
 
     if len(code) > MAX_REGION_CODE_LENGTH:
-        raise SecurityError(f"Region code too long: {code}")
+        msg = f"Region code too long: {code}"
+        raise SecurityError(msg)
 
     if not re.match(r"^[a-z]{2}$", code):
-        raise SecurityError(f"Invalid region code format: {code}")
+        msg = f"Invalid region code format: {code}"
+        raise SecurityError(msg)
 
     return code
 
@@ -415,10 +553,11 @@ def validate_price_levels(levels: list[str]) -> list[str]:
     for level in levels:
         level = level.strip().upper()
         if level not in VALID_REQUEST_PRICE_LEVELS:
-            raise SecurityError(
+            msg = (
                 f"Invalid price level: {level!r}. "
                 f"Valid values: {sorted(VALID_REQUEST_PRICE_LEVELS)}"
             )
+            raise SecurityError(msg)
         validated.append(level)
 
     return validated
@@ -427,15 +566,14 @@ def validate_price_levels(levels: list[str]) -> list[str]:
 def validate_rank_preference(pref: str) -> str:
     """Validate a rank preference value."""
     if not pref or not isinstance(pref, str):
-        raise SecurityError("Rank preference is required")
+        msg = "Rank preference is required"
+        raise SecurityError(msg)
 
     pref = pref.strip().upper()
 
     if pref not in VALID_RANK_PREFERENCES:
-        raise SecurityError(
-            f"Invalid rank preference: {pref!r}. "
-            f"Valid values: {sorted(VALID_RANK_PREFERENCES)}"
-        )
+        msg = f"Invalid rank preference: {pref!r}. Valid values: {sorted(VALID_RANK_PREFERENCES)}"
+        raise SecurityError(msg)
 
     return pref
 
@@ -443,13 +581,13 @@ def validate_rank_preference(pref: str) -> str:
 def validate_min_rating(rating: float) -> float:
     """Validate a minimum rating filter (0.0 to 5.0, in 0.5 steps)."""
     if not isinstance(rating, (int, float)):
-        raise SecurityError(f"Rating must be a number, got {type(rating)}")
+        msg = f"Rating must be a number, got {type(rating)}"
+        raise SecurityError(msg)
 
     rating = float(rating)
     if rating < 0.0 or rating > 5.0:
-        raise SecurityError(
-            f"Rating out of range: {rating} (must be 0.0 to 5.0)"
-        )
+        msg = f"Rating out of range: {rating} (must be 0.0 to 5.0)"
+        raise SecurityError(msg)
 
     return rating
 
@@ -463,10 +601,11 @@ def validate_ev_connector_types(types: list[str]) -> list[str]:
     for t in types:
         t = t.strip().upper()
         if t not in VALID_EV_CONNECTOR_TYPES:
-            raise SecurityError(
+            msg = (
                 f"Invalid EV connector type: {t!r}. "
                 f"Valid values: {sorted(VALID_EV_CONNECTOR_TYPES)}"
             )
+            raise SecurityError(msg)
         validated.append(t)
 
     return validated
@@ -479,23 +618,23 @@ def validate_photo_resource_name(name: str) -> str:
     Format: places/{place_id}/photos/{photo_id}
     """
     if not name or not isinstance(name, str):
-        raise SecurityError("Photo resource name is required")
+        msg = "Photo resource name is required"
+        raise SecurityError(msg)
 
     name = name.strip()
 
     if any(c in name for c in ["\n", "\r", "\0"]):
-        raise SecurityError(
-            "Photo resource name contains invalid control characters"
-        )
+        msg = "Photo resource name contains invalid control characters"
+        raise SecurityError(msg)
 
     if len(name) > 500:
-        raise SecurityError("Photo resource name too long")
+        msg = "Photo resource name too long"
+        raise SecurityError(msg)
 
     # Must match pattern: places/{id}/photos/{id}
-    if not re.match(
-        r"^places/[A-Za-z0-9_\-]+/photos/[A-Za-z0-9_\-/=]+$", name
-    ):
-        raise SecurityError(f"Invalid photo resource name format: {name}")
+    if not re.match(r"^places/[A-Za-z0-9_\-]+/photos/[A-Za-z0-9_\-/=]+$", name):
+        msg = f"Invalid photo resource name format: {name}"
+        raise SecurityError(msg)
 
     return name
 
@@ -503,12 +642,12 @@ def validate_photo_resource_name(name: str) -> str:
 def validate_photo_max_dimension(value: int, name: str = "dimension") -> int:
     """Validate a photo max width or height (1-4800 pixels)."""
     if not isinstance(value, int):
-        raise SecurityError(f"Photo {name} must be an integer")
+        msg = f"Photo {name} must be an integer"
+        raise SecurityError(msg)
 
     if value < 1 or value > 4800:
-        raise SecurityError(
-            f"Photo {name} out of range: {value} (must be 1 to 4800)"
-        )
+        msg = f"Photo {name} out of range: {value} (must be 1 to 4800)"
+        raise SecurityError(msg)
 
     return value
 
@@ -527,7 +666,7 @@ def sanitize_error_message(error: Exception) -> str:
     patterns = [
         (r"(password|token|key|secret|credential)[\s:=]+\S+", r"\1=***"),
         (r"Bearer \S+", "Bearer ***"),
-        (r"ya29\.\S+", "ya29.***"),    # Google access tokens
+        (r"ya29\.\S+", "ya29.***"),  # Google access tokens
         (r"1//[A-Za-z0-9_-]+", "1//***"),  # Google refresh tokens
         (r"AIza[A-Za-z0-9_\-]+", "AIza***"),  # Google API keys
         (r"/[\w\-\.]+/[\w\-\.]+\.json", "/***/credentials.json"),
@@ -623,10 +762,8 @@ class RateLimiter:
     def check(self, account: str, operation: str) -> None:
         """Like allow() but raises SecurityError on rate limit."""
         if not self.allow(account, operation):
-            raise SecurityError(
-                f"Rate limit exceeded for {operation}. "
-                "Please wait before retrying."
-            )
+            msg = f"Rate limit exceeded for {operation}. Please wait before retrying."
+            raise SecurityError(msg)
 
 
 # Module-level singleton

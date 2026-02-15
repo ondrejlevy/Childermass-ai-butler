@@ -641,10 +641,7 @@ class TestSanitizeErrorMessage:
         assert "credentials.json" in result
 
     def test_multiple_redactions(self):
-        err = Exception(
-            "Bearer ya29.token123 and password=secret "
-            "at /home/user/creds.json"
-        )
+        err = Exception("Bearer ya29.token123 and password=secret at /home/user/creds.json")
         result = sanitize_error_message(err)
         assert "ya29.token123" not in result
         assert "secret" not in result
@@ -734,10 +731,9 @@ class TestAuditLog:
         """Test that audit_log writes a valid JSON entry."""
         log_file = tmp_path / "test-audit.log"
 
-        with patch(
-            "childermass.contacts_mcp.security._AUDIT_LOG_FILE", log_file
-        ), patch(
-            "childermass.contacts_mcp.security._AUDIT_DIR", tmp_path
+        with (
+            patch("childermass.contacts_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.contacts_mcp.security._AUDIT_DIR", tmp_path),
         ):
             # Force re-creation of logger by clearing handlers
             import logging
@@ -764,10 +760,9 @@ class TestAuditLog:
     def test_logs_failure(self, tmp_path):
         log_file = tmp_path / "test-audit.log"
 
-        with patch(
-            "childermass.contacts_mcp.security._AUDIT_LOG_FILE", log_file
-        ), patch(
-            "childermass.contacts_mcp.security._AUDIT_DIR", tmp_path
+        with (
+            patch("childermass.contacts_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.contacts_mcp.security._AUDIT_DIR", tmp_path),
         ):
             import logging
 

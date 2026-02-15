@@ -458,12 +458,8 @@ class TestRateLimiter:
 class TestAuditLog:
     def test_audit_entry_json(self, tmp_path, monkeypatch):
         log_file = tmp_path / "test-audit.log"
-        monkeypatch.setattr(
-            "childermass.tasks_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.tasks_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.tasks_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.tasks_mcp.security._AUDIT_DIR", tmp_path)
 
         # Clear any cached logger handlers
         logger = logging.getLogger("childermass.tasks_mcp.audit")
@@ -485,12 +481,8 @@ class TestAuditLog:
 
     def test_audit_failure_entry(self, tmp_path, monkeypatch):
         log_file = tmp_path / "test-audit.log"
-        monkeypatch.setattr(
-            "childermass.tasks_mcp.security._AUDIT_LOG_FILE", log_file
-        )
-        monkeypatch.setattr(
-            "childermass.tasks_mcp.security._AUDIT_DIR", tmp_path
-        )
+        monkeypatch.setattr("childermass.tasks_mcp.security._AUDIT_LOG_FILE", log_file)
+        monkeypatch.setattr("childermass.tasks_mcp.security._AUDIT_DIR", tmp_path)
 
         logger = logging.getLogger("childermass.tasks_mcp.audit")
         logger.handlers.clear()
@@ -526,9 +518,7 @@ class TestAuthBasics:
 
         assert "tasks-credentials.json" in str(DEFAULT_CREDENTIALS_PATH)
         assert "gmail-credentials.json" not in str(DEFAULT_CREDENTIALS_PATH)
-        assert "calendar-credentials.json" not in str(
-            DEFAULT_CREDENTIALS_PATH
-        )
+        assert "calendar-credentials.json" not in str(DEFAULT_CREDENTIALS_PATH)
 
     def test_token_path(self):
         from childermass.tasks_mcp.auth import get_token_path

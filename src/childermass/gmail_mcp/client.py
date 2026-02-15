@@ -49,6 +49,7 @@ from .security import (
     validate_total_attachment_size,
 )
 
+
 # Module-level client cache - keyed by account email
 _gmail_services: dict[str, Resource] = {}
 
@@ -115,10 +116,11 @@ def get_gmail_service(account: str | None = None) -> Resource:
     if account is None:
         accounts = list_authenticated_accounts()
         if not accounts:
-            raise RuntimeError(
+            msg = (
                 "No authenticated Gmail accounts found. Run:\n"
                 "  python -m childermass.gmail_mcp.auth --account=your@email.com"
             )
+            raise RuntimeError(msg)
         account = accounts[0]
         if account == "default":
             account = None
@@ -216,10 +218,7 @@ def _parse_message(msg: dict) -> Email:
         labels=label_ids,
         is_unread="UNREAD" in label_ids,
         has_attachments=has_attachments,
-        message_id=(
-            _get_header(headers, "Message-ID")
-            or _get_header(headers, "Message-Id")
-        ),
+        message_id=(_get_header(headers, "Message-ID") or _get_header(headers, "Message-Id")),
         references=_get_header(headers, "References"),
     )
 
@@ -269,9 +268,7 @@ def _extract_attachments(payload: dict) -> list[Attachment]:
                     Attachment(
                         id=attachment_id,
                         filename=sanitize_filename(filename),
-                        mime_type=part.get(
-                            "mimeType", "application/octet-stream"
-                        ),
+                        mime_type=part.get("mimeType", "application/octet-stream"),
                         size=body.get("size", 0),
                         data=None,
                     )
@@ -307,9 +304,7 @@ def _encode_address(addr: str) -> str:
 
 def _encode_address_list(addrs: str) -> str:
     """Encode comma-separated email addresses for MIME headers."""
-    return ", ".join(
-        _encode_address(a.strip()) for a in addrs.split(",") if a.strip()
-    )
+    return ", ".join(_encode_address(a.strip()) for a in addrs.split(",") if a.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -351,9 +346,7 @@ def list_emails(
         if label_ids:
             request_params["labelIds"] = label_ids
 
-        response = (
-            service.users().messages().list(**request_params).execute()
-        )
+        response = service.users().messages().list(**request_params).execute()
         messages = response.get("messages", [])
 
         if not messages:
@@ -401,12 +394,7 @@ def get_email(message_id: str, account: str | None = None) -> EmailDetail:
     try:
         service = get_gmail_service(account)
 
-        msg = (
-            service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="full")
-            .execute()
-        )
+        msg = service.users().messages().get(userId="me", id=message_id, format="full").execute()
 
         basic = _parse_message(msg)
         payload = msg.get("payload", {})
@@ -438,9 +426,7 @@ def get_email(message_id: str, account: str | None = None) -> EmailDetail:
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
-def search_emails(
-    query: str, max_results: int = 20, account: str | None = None
-) -> list[Email]:
+def search_emails(query: str, max_results: int = 20, account: str | None = None) -> list[Email]:
     """Search emails using Gmail query syntax."""
     query = validate_gmail_query(query)
     acct_key = account or "default"
@@ -502,9 +488,8 @@ def _load_email_attachment(
             break
 
     if att_meta is None:
-        raise ValueError(
-            f"Attachment {attachment_id} not found in message {message_id}"
-        )
+        msg = f"Attachment {attachment_id} not found in message {message_id}"
+        raise ValueError(msg)
 
     # Validate MIME type
     validate_mime_type(att_meta.mime_type)
@@ -557,10 +542,11 @@ def send_email(
         # Verify account
         actual_account = get_account_email(account)
         if account is not None and actual_account.lower() != account.lower():
-            raise ValueError(
+            msg = (
                 f"Account mismatch: requested '{account}' but loaded "
                 f"credentials are for '{actual_account}'. Re-authenticate."
             )
+            raise ValueError(msg)
         account = actual_account
 
         # --- Collect & validate attachments ---
@@ -595,12 +581,7 @@ def send_email(
             attachments=attachments if attachments else None,
         )
 
-        result = (
-            service.users()
-            .messages()
-            .send(userId="me", body=message)
-            .execute()
-        )
+        result = service.users().messages().send(userId="me", body=message).execute()
 
         # --- Audit log ---
         audit_log(
@@ -679,12 +660,7 @@ def create_draft(
             attachments=attachments if attachments else None,
         )
 
-        result = (
-            service.users()
-            .drafts()
-            .create(userId="me", body={"message": message})
-            .execute()
-        )
+        result = service.users().drafts().create(userId="me", body={"message": message}).execute()
 
         audit_log("create_draft", acct_key, {"to": to, "subject": subject[:80]})
 
@@ -748,9 +724,7 @@ def modify_labels(
         if remove_label_ids:
             body["removeLabelIds"] = remove_label_ids
 
-        service.users().messages().modify(
-            userId="me", id=message_id, body=body
-        ).execute()
+        service.users().messages().modify(userId="me", id=message_id, body=body).execute()
 
         audit_log(
             "modify_labels",
@@ -827,12 +801,7 @@ def _quote_body(original: EmailDetail) -> str:
     quoted_lines = [f"> {line}" for line in original.body.split("\n")]
     quoted_text = "\n".join(quoted_lines)
 
-    return (
-        f"\n\n"
-        f"---\n"
-        f"On {original.date}, {original.from_addr} wrote:\n"
-        f"{quoted_text}"
-    )
+    return f"\n\n---\nOn {original.date}, {original.from_addr} wrote:\n{quoted_text}"
 
 
 def download_attachment(
@@ -902,9 +871,7 @@ def _create_message_with_attachments(
             part = MIMEBase(maintype, subtype)
             part.set_payload(data)
             encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition", "attachment", filename=filename
-            )
+            part.add_header("Content-Disposition", "attachment", filename=filename)
             message.attach(part)
     else:
         message = MIMEText(body, "plain")
@@ -954,11 +921,12 @@ def reply_to_email(
         if account is None:
             account = detect_account_from_email(original)
             if account is None:
-                raise ValueError(
+                msg = (
                     f"Could not detect which account received this email. "
                     f"To: {original.to_addr}, Cc: {original.cc_addr}. "
                     f"Please specify account parameter explicitly."
                 )
+                raise ValueError(msg)
 
         account_param = None if account == "default" else account
 
@@ -993,12 +961,7 @@ def reply_to_email(
         # Ensure threading on sender's side
         message["threadId"] = original.thread_id
 
-        result = (
-            service.users()
-            .messages()
-            .send(userId="me", body=message)
-            .execute()
-        )
+        result = service.users().messages().send(userId="me", body=message).execute()
 
         audit_log(
             "reply_to_email",
@@ -1019,9 +982,7 @@ def reply_to_email(
     except SecurityError:
         raise
     except Exception as e:
-        audit_log(
-            "reply_to_email", acct_key, {"error": str(e)[:100]}, success=False
-        )
+        audit_log("reply_to_email", acct_key, {"error": str(e)[:100]}, success=False)
         raise RuntimeError(sanitize_error_message(e)) from None
 
 
@@ -1050,10 +1011,11 @@ def forward_email(
 
         actual_account = get_account_email(account)
         if account is not None and actual_account.lower() != account.lower():
-            raise ValueError(
+            msg = (
                 f"Account mismatch: requested '{account}' but loaded "
                 f"credentials are for '{actual_account}'. Re-authenticate."
             )
+            raise ValueError(msg)
         account = actual_account
 
         original = get_email(message_id)
@@ -1084,9 +1046,7 @@ def forward_email(
             for att in original.attachments:
                 validate_mime_type(att.mime_type)
                 data = download_attachment(message_id, att.id, account)
-                attachments_data.append(
-                    (sanitize_filename(att.filename), att.mime_type, data)
-                )
+                attachments_data.append((sanitize_filename(att.filename), att.mime_type, data))
                 attachment_sizes.append(len(data))
 
             if attachment_sizes:
@@ -1100,12 +1060,7 @@ def forward_email(
             attachments=attachments_data if attachments_data else None,
         )
 
-        result = (
-            service.users()
-            .messages()
-            .send(userId="me", body=message)
-            .execute()
-        )
+        result = service.users().messages().send(userId="me", body=message).execute()
 
         audit_log(
             "forward_email",
@@ -1126,7 +1081,5 @@ def forward_email(
     except SecurityError:
         raise
     except Exception as e:
-        audit_log(
-            "forward_email", acct_key, {"error": str(e)[:100]}, success=False
-        )
+        audit_log("forward_email", acct_key, {"error": str(e)[:100]}, success=False)
         raise RuntimeError(sanitize_error_message(e)) from None

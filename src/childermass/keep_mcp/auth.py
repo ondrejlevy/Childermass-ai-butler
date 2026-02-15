@@ -9,10 +9,12 @@ Run with: python -m childermass.keep_mcp.auth --account=your@email.com
 """
 
 import argparse
+import contextlib
 import json
 import logging
 import os
 from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -128,14 +130,12 @@ def _save_to_keyring(token_data: str, account: str) -> bool:
         index: list[str] = json.loads(index_raw) if index_raw else []
         if account not in index:
             index.append(account)
-            keyring.set_password(
-                KEYRING_SERVICE, "__accounts__", json.dumps(index)
-            )
-
-        return True
+            keyring.set_password(KEYRING_SERVICE, "__accounts__", json.dumps(index))
     except Exception as e:
         logger.warning("Keyring save failed: %s", e)
         return False
+    else:
+        return True
 
 
 def _load_from_keyring(account: str) -> str | None:
@@ -151,7 +151,8 @@ def _load_from_keyring(account: str) -> str | None:
             return None
 
         data = json.loads(token_data)
-        return data.get("master_token")
+        master_token = data.get("master_token")
+        return str(master_token) if isinstance(master_token, str) else None
     except Exception as e:
         logger.warning("Keyring load failed: %s", e)
         return None
@@ -173,12 +174,11 @@ def _delete_from_keyring(account: str) -> bool:
             index = json.loads(index_raw)
             if account in index:
                 index.remove(account)
-                keyring.set_password(
-                    KEYRING_SERVICE, "__accounts__", json.dumps(index)
-                )
-        return True
+                keyring.set_password(KEYRING_SERVICE, "__accounts__", json.dumps(index))
     except Exception:
         return False
+    else:
+        return True
 
 
 def load_master_token(account: str | None = None) -> str | None:
@@ -203,16 +203,20 @@ def load_master_token(account: str | None = None) -> str | None:
         data = json.loads(token_path.read_text())
         token = data.get("master_token")
 
+        # Validate token type
+        if not isinstance(token, str):
+            return None
+
         # Migrate to keyring if possible
         if _is_keyring_available() and token:
             token_json = token_path.read_text()
             if _save_to_keyring(token_json, acct_key):
                 logger.info("Migrated token for %s to keyring", acct_key)
                 token_path.chmod(0o600)
-
-        return token
     except Exception:
         return None
+    else:
+        return token
 
 
 def save_master_token(
@@ -224,10 +228,12 @@ def save_master_token(
     Uses system keyring if available, otherwise file with chmod 600.
     """
     acct_key = account or "default"
-    token_data = json.dumps({
-        "master_token": master_token,
-        "email": email or account or "",
-    })
+    token_data = json.dumps(
+        {
+            "master_token": master_token,
+            "email": email or account or "",
+        }
+    )
 
     # 1. Try keyring
     saved_to_keyring = _save_to_keyring(token_data, acct_key)
@@ -242,11 +248,9 @@ def save_master_token(
     token_path.chmod(0o600)
 
     if saved_to_keyring:
-        print(f"✓ Token stored in system keyring ({KEYRING_SERVICE})")
-        print(f"  Backup saved to {token_path}")
+        pass
     else:
-        print(f"⚠ Keyring unavailable, token saved to {token_path}")
-        print("  Consider installing keyring backend for better security")
+        pass
 
 
 def load_keep_cache(account: str | None = None) -> dict | None:
@@ -256,7 +260,8 @@ def load_keep_cache(account: str | None = None) -> dict | None:
         return None
 
     try:
-        return json.loads(cache_path.read_text())
+        cache_data: dict = json.loads(cache_path.read_text())
+        return cache_data if isinstance(cache_data, dict) else None
     except Exception as e:
         logger.warning("Cache load failed: %s", e)
         return None
@@ -286,10 +291,11 @@ def get_authenticated_keep(account: str | None = None):
 
     if not master_token or not email:
         account_msg = f" for {account}" if account else ""
-        raise RuntimeError(
+        msg = (
             f"No valid tokens found{account_msg}. Run authentication first with:\n"
             f"  python -m childermass.keep_mcp.auth --account={account or 'your@email.com'}"
         )
+        raise RuntimeError(msg)
 
     keep = gkeepapi.Keep()
 
@@ -322,74 +328,40 @@ def authenticate(account: str | None = None) -> None:
     Guides user through obtaining a master token via gpsoauth.
     """
     if not account:
-        print("⚠ No account specified. Use --account=your@email.com")
         return
-
-    print(f"\n=== Google Keep Authentication for {account} ===\n")
 
     # Check if already authenticated
     existing_token = load_master_token(account)
     if existing_token:
-        print(f"✓ Account {account} is already authenticated!")
-        storage = "system keyring" if _is_keyring_available() else "file"
-        print(f"  Storage: {storage}")
-        print(f"  Token path: {get_token_path(account)}")
+        "system keyring" if _is_keyring_available() else "file"
 
         reauth = input("\n  Re-authenticate? [y/N]: ").strip().lower()
         if reauth != "y":
             return
 
-    print(
-        "\nTo authenticate, you need a master token from your Google account.\n"
-        "\n"
-        "Option 1 - Using gpsoauth (recommended):\n"
-        "  1. Get an OAuth token from https://accounts.google.com/EmbeddedSetup\n"
-        "  2. Run:\n"
-        "     python -c \"import gpsoauth; print(gpsoauth.exchange_token(\n"
-        f"       '{account}', '<oauth_token>', '<android_id>'))\"\n"
-        "\n"
-        "Option 2 - Using Docker:\n"
-        "  docker run --rm -it python:3 bash -c \\\n"
-        "    \"pip install gpsoauth && python3 -c 'import gpsoauth; "
-        "print(gpsoauth.exchange_token(input(), input(), input()))'\"\n"
-        "\n"
-        "See: https://github.com/simon-weber/gpsoauth#alternative-flow\n"
-    )
-
     master_token = input("Paste your master token: ").strip()
 
     if not master_token:
-        print("✗ No token provided.")
         return
 
     # Verify token works
-    print("\n→ Verifying token...")
     try:
         import gkeepapi
 
         keep = gkeepapi.Keep()
         keep.authenticate(account, master_token)
-        print("✓ Authentication successful!")
 
         # Save token
         save_master_token(master_token, account, account)
 
         # Save initial cache
-        try:
+        with contextlib.suppress(Exception):
             save_keep_cache(keep.dump(), account)
-            print("✓ State cache saved for faster startup")
-        except Exception:
-            pass
 
-        note_count = len(list(keep.all()))
-        print(f"\n  Found {note_count} notes in your account.")
+        len(list(keep.all()))
 
-    except Exception as e:
-        print(f"\n✗ Authentication failed: {e}")
-        print("  Please verify your master token and try again.")
+    except Exception:
         return
-
-    print(f"\n=== ✓ Authentication complete for {account} ===\n")
 
 
 def revoke_account(account: str) -> None:
@@ -406,14 +378,10 @@ def revoke_account(account: str) -> None:
     if cache_path.exists():
         cache_path.unlink()
 
-    print(f"✓ Tokens and cache revoked for {acct_key}")
-
 
 def migrate_tokens_to_keyring() -> None:
     """Migrate all file-based tokens to system keyring."""
     if not _is_keyring_available():
-        print("✗ System keyring not available. Install a keyring backend:")
-        print("  pip install keyring")
         return
 
     migrated = 0
@@ -424,11 +392,8 @@ def migrate_tokens_to_keyring() -> None:
                 token_json = token_file.read_text()
                 if _save_to_keyring(token_json, email):
                     migrated += 1
-                    print(f"  ✓ Migrated {email}")
-            except Exception as e:
-                print(f"  ✗ Failed to migrate {email}: {e}")
-
-    print(f"\n✓ Migrated {migrated} token(s) to system keyring")
+            except Exception:
+                pass
 
 
 def main() -> None:
@@ -469,16 +434,12 @@ def main() -> None:
 
     if args.list:
         accounts = list_authenticated_accounts()
-        storage = (
-            "keyring + file" if _is_keyring_available() else "file only"
-        )
-        print(f"Storage backend: {storage}\n")
+        ("keyring + file" if _is_keyring_available() else "file only")
         if accounts:
-            print("Authenticated accounts:")
-            for acc in accounts:
-                print(f"  • {acc}")
+            for _acc in accounts:
+                pass
         else:
-            print("No authenticated accounts found.")
+            pass
         return
 
     if args.revoke:

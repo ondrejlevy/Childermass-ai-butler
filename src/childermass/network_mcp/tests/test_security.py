@@ -389,9 +389,7 @@ class TestValidateVoucherParams:
 
     def test_rejects_too_large_time(self):
         with pytest.raises(SecurityError, match="too large"):
-            validate_voucher_params(
-                time_limit_minutes=MAX_VOUCHER_TIME_LIMIT_MINUTES + 1
-            )
+            validate_voucher_params(time_limit_minutes=MAX_VOUCHER_TIME_LIMIT_MINUTES + 1)
 
     def test_rejects_negative_data(self):
         with pytest.raises(SecurityError, match="positive integer"):
@@ -407,9 +405,7 @@ class TestValidateVoucherParams:
 
     def test_rejects_too_large_download(self):
         with pytest.raises(SecurityError, match="too large"):
-            validate_voucher_params(
-                download_limit_kbps=MAX_VOUCHER_RATE_LIMIT_KBPS + 1
-            )
+            validate_voucher_params(download_limit_kbps=MAX_VOUCHER_RATE_LIMIT_KBPS + 1)
 
     def test_rejects_too_large_guest_limit(self):
         with pytest.raises(SecurityError, match="too large"):
@@ -572,7 +568,7 @@ class TestRateLimiter:
 
     def test_allows_up_to_capacity(self):
         limiter = RateLimiter()
-        for i in range(30):  # networks capacity is 30
+        for _i in range(30):  # networks capacity is 30
             assert limiter.allow("networks") is True
 
     def test_rejects_over_capacity(self):
@@ -629,10 +625,13 @@ class TestAuditLog:
         """Test that audit_log writes valid JSON entries."""
         log_file = tmp_path / "test-audit.log"
 
-        with patch("childermass.network_mcp.security._AUDIT_LOG_FILE", log_file), \
-             patch("childermass.network_mcp.security._AUDIT_DIR", tmp_path):
+        with (
+            patch("childermass.network_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.network_mcp.security._AUDIT_DIR", tmp_path),
+        ):
             # Reset logger to pick up new path
             import logging
+
             logger_name = "childermass.network_mcp.audit"
             logger = logging.getLogger(logger_name)
             logger.handlers.clear()
@@ -650,9 +649,12 @@ class TestAuditLog:
         """Test failure audit log."""
         log_file = tmp_path / "test-audit.log"
 
-        with patch("childermass.network_mcp.security._AUDIT_LOG_FILE", log_file), \
-             patch("childermass.network_mcp.security._AUDIT_DIR", tmp_path):
+        with (
+            patch("childermass.network_mcp.security._AUDIT_LOG_FILE", log_file),
+            patch("childermass.network_mcp.security._AUDIT_DIR", tmp_path),
+        ):
             import logging
+
             logger = logging.getLogger("childermass.network_mcp.audit")
             logger.handlers.clear()
 
@@ -683,21 +685,22 @@ class TestAuthConfig:
         """Loading config with no file returns None."""
         from childermass.network_mcp.auth import load_config
 
-        with patch("childermass.network_mcp.auth.get_config_path",
-                   return_value=tmp_path / "nonexistent.json"):
+        with patch(
+            "childermass.network_mcp.auth.get_config_path",
+            return_value=tmp_path / "nonexistent.json",
+        ):
             assert load_config() is None
 
     def test_save_and_load_config(self, tmp_path):
         """Round-trip save and load of config."""
-        from childermass.network_mcp.auth import save_config, load_config
+        from childermass.network_mcp.auth import load_config, save_config
 
         config_file = tmp_path / "network-config.json"
 
-        with patch("childermass.network_mcp.auth.get_config_path",
-                   return_value=config_file), \
-             patch("childermass.network_mcp.auth._is_keyring_available",
-                   return_value=False):
-
+        with (
+            patch("childermass.network_mcp.auth.get_config_path", return_value=config_file),
+            patch("childermass.network_mcp.auth._is_keyring_available", return_value=False),
+        ):
             save_config(
                 host="192.168.1.1",
                 username="admin",

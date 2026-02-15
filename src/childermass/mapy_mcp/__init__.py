@@ -13,11 +13,14 @@ def __getattr__(name: str):
     """Lazy imports to avoid circular / double-import issues with ``python -m``."""
     if name == "mcp":
         from .server import mcp
+
         return mcp
     if name == "MapyClient":
         from .client import MapyClient
+
         return MapyClient
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
 
 
-__all__ = ["mcp", "MapyClient", "__version__"]
+__all__ = ["MapyClient", "__version__", "mcp"]
