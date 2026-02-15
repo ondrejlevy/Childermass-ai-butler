@@ -27,7 +27,7 @@ echo "✓ Virtual environment: $VENV_DIR"
 
 # 2. Dependencies
 echo "→ Installing dependencies..."
-pip install --quiet --upgrade pip==24.3.1
+pip install --quiet --upgrade pip
 pip install --quiet -r "$SCRIPT_DIR/requirements.txt"
 echo "✓ Dependencies installed"
 
