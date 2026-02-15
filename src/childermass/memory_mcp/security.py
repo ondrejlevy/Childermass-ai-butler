@@ -463,8 +463,7 @@ def sanitize_error_message(error: Exception) -> str:
 # ============================================================================
 
 
-_AUDIT_DIR = Path.home() / ".childermass"
-_AUDIT_LOG_FILE = _AUDIT_DIR / "memory-audit.log"
+_AUDIT_LOG_FILE = Path.home() / ".childermass" / "memory-audit.log"
 
 
 def _get_audit_logger() -> logging.Logger:

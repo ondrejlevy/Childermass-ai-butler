@@ -7,9 +7,13 @@ file-based fallback for systems without keyring support.
 
 import argparse
 import contextlib
+import logging
 import os
 import sys
 from pathlib import Path
+
+
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -45,8 +49,8 @@ def get_api_key() -> str:
             api_key = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
             if api_key:
                 return api_key
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not read API key from keyring: {e}")
 
     # Fallback to file
     if API_KEY_FILE.exists():
@@ -54,8 +58,8 @@ def get_api_key() -> str:
             api_key = API_KEY_FILE.read_text().strip()
             if api_key:
                 return api_key
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not read API key from file: {e}")
 
     msg = (
         "No OpenWeatherMap API key configured. "
@@ -82,14 +86,17 @@ def set_api_key(api_key: str) -> None:
 
     # Basic validation - OpenWeatherMap keys are 32 character hex strings
     if len(api_key) != 32 or not all(c in "0123456789abcdef" for c in api_key.lower()):
-        pass
+        logger.warning(
+            "API key format may be incorrect. "
+            "OpenWeatherMap keys are typically 32-character hex strings."
+        )
 
     # Store in keyring if available
     if KEYRING_AVAILABLE:
         with contextlib.suppress(Exception):
             keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, api_key)
     else:
-        pass
+        logger.debug("Keyring not available, storing API key in file only")
 
     # Always store in file as backup
     _store_in_file(api_key)
@@ -122,19 +129,19 @@ def delete_api_key() -> None:
             deleted_any = True
         except keyring.errors.PasswordDeleteError:
             pass  # Not found in keyring
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not delete API key from keyring: {e}")
 
     # Remove file
     if API_KEY_FILE.exists():
         try:
             API_KEY_FILE.unlink()
             deleted_any = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not delete API key file: {e}")
 
     if not deleted_any:
-        pass
+        logger.info("No API key found to delete")
 
 
 def verify_api_key() -> bool:

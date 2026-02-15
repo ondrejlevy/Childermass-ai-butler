@@ -111,8 +111,10 @@ def list_authenticated_accounts() -> list[str]:
             if index_raw:
                 for acc in json.loads(index_raw):
                     accounts.add(acc)
-        except Exception:
-            pass
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Could not read accounts from keyring: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error reading keyring accounts: {e}")
 
     # Check legacy single-account token
     legacy_token = _get_legacy_token_path(account=None)
@@ -342,8 +344,10 @@ def migrate_tokens_to_keyring() -> None:
                 token_json = token_file.read_text()
                 if _save_to_keyring(token_json, email):
                     migrated += 1
-            except Exception:
-                pass
+            except (OSError, ValueError) as e:
+                logger.warning(f"Failed to migrate token for {email}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error migrating {email}: {e}")
 
 
 def main() -> None:

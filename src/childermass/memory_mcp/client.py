@@ -6,14 +6,16 @@ Memory instance and provides both memory storage/recall and temporal graph opera
 """
 
 import json
+import logging
 import uuid
 from datetime import datetime
 from typing import Any
 
 # Configure environment BEFORE importing openmemory
-from .auth import configure_environment
+from .env import configure_environment
 
 
+logger = logging.getLogger(__name__)
 configure_environment()
 
 # Import OpenMemory SDK
@@ -644,8 +646,8 @@ def _parse_tags(tags: Any) -> list[str]:
             parsed = json.loads(tags)
             if isinstance(parsed, list):
                 return parsed
-        except (json.JSONDecodeError, TypeError):
-            pass
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug("Tags not in JSON format, parsing as comma-separated: %s", e)
         return [t.strip() for t in tags.split(",") if t.strip()]
     return []
 

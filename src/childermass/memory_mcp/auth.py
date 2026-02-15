@@ -1,7 +1,7 @@
 """Configuration management for Childermass Memory MCP.
 
-This module handles database path configuration, embedding provider setup,
-and CLI tools for memory database administration.
+This module handles CLI tools for memory database administration and export.
+Environment configuration has been moved to env.py to avoid circular imports.
 """
 
 import argparse
@@ -10,61 +10,15 @@ import os
 import sys
 from pathlib import Path
 
+from .env import configure_environment, get_db_path
 
-# Default paths
-MODULE_DIR = Path(__file__).parent
-DATA_DIR = MODULE_DIR / "data"
-DEFAULT_DB_PATH = DATA_DIR / "memory.sqlite"
+
+# Config directory for settings
 CONFIG_DIR = Path.home() / ".childermass"
 
 
 class ConfigurationError(Exception):
     """Raised when configuration is invalid or missing."""
-
-
-def get_db_path() -> Path:
-    """Get the database file path.
-
-    Priority:
-    1. HOUSTON_MEMORY_DB_PATH environment variable
-    2. Default: <module>/data/memory.sqlite
-
-    Returns:
-        Path: Path to the SQLite database file.
-    """
-    env_path = os.environ.get("HOUSTON_MEMORY_DB_PATH")
-    if env_path:
-        return Path(env_path)
-    return DEFAULT_DB_PATH
-
-
-def get_db_url() -> str:
-    """Get the database URL for OpenMemory SDK.
-
-    Returns:
-        str: SQLite URL string.
-    """
-    db_path = get_db_path()
-    return f"sqlite:///{db_path}"
-
-
-def ensure_data_dir() -> None:
-    """Create the data directory if it doesn't exist."""
-    data_dir = get_db_path().parent
-    data_dir.mkdir(parents=True, exist_ok=True)
-
-
-def configure_environment() -> None:
-    """Set environment variables for OpenMemory SDK.
-
-    Must be called BEFORE importing the OpenMemory SDK,
-    as the SDK reads env vars at module import time.
-    """
-    os.environ.setdefault("OM_DB_URL", get_db_url())
-    os.environ.setdefault("OM_EMBEDDINGS", "synthetic")
-    os.environ.setdefault("OM_TIER", "smart")
-
-    ensure_data_dir()
 
 
 def get_config() -> dict:

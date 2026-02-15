@@ -237,9 +237,6 @@ def verify_ssl(config: dict | None = None) -> bool:
     verify = config.get("verify_ssl", True)
 
     if not verify:
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.warning(
             "SSL certificate verification is DISABLED. "
             "This makes the connection vulnerable to man-in-the-middle attacks. "
@@ -344,21 +341,21 @@ def test_connection() -> None:
                         cam.get("featureFlags", {}).get("isDoorbell", False)
                     if sensors:
                         for _s in sensors:
-                            pass
+                            logger.debug(f"Found sensor: {_s.get('name', 'unknown')}")
                     if lights:
                         for _light_dev in lights:
-                            pass
+                            logger.debug(f"Found light: {_light_dev.get('name', 'unknown')}")
                 else:
-                    pass
+                    logger.warning(f"Failed to access Protect API: {bootstrap_resp.status_code}")
             elif login_resp.status_code == 401:
-                pass
+                logger.error("Authentication failed: Invalid credentials")
             else:
-                pass
+                logger.error(f"Login failed with status code: {login_resp.status_code}")
 
-    except httpx.ConnectError:
-        pass
-    except Exception:
-        pass
+    except httpx.ConnectError as e:
+        logger.error(f"Connection error: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error during connection test: {e}")
 
 
 def show_config() -> None:
