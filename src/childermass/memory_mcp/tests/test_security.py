@@ -304,7 +304,7 @@ class TestSanitizeErrorMessage:
         assert "SELECT" not in result
 
     def test_strips_api_keys(self):
-        err = Exception("API key: sk-abc123def456 is invalid")
+        err = Exception("API key: sk-abc123def456 is invalid")  # gitleaks:allow
         result = sanitize_error_message(err)
         assert "sk-abc123def456" not in result
 

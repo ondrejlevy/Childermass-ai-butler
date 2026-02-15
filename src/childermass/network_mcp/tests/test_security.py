@@ -524,12 +524,12 @@ class TestSanitizeErrorMessage:
         assert "abcdef123456" not in result
 
     def test_strips_api_key(self):
-        err = Exception("X-API-Key: sk_live_abc123def456")
+        err = Exception("X-API-Key: sk_live_abc123def456")  # gitleaks:allow
         result = sanitize_error_message(err)
         assert "sk_live_abc123def456" not in result
 
     def test_strips_bearer_token(self):
-        err = Exception("Authorization: Bearer eyJhbGci...")
+        err = Exception("Authorization: Bearer eyJhbGci...")  # gitleaks:allow
         result = sanitize_error_message(err)
         assert "eyJhbGci" not in result
         assert "Bearer ***" in result

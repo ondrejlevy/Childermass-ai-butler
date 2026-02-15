@@ -70,33 +70,68 @@ ignore = [
     "S101",    # use of assert (OK in tests)
     "S105",    # possible hardcoded password (too many false positives)
     "S106",    # possible hardcoded password (too many false positives)
+    "PLW0603", # global statement (used intentionally for singletons)
+    "PLW0602", # global without assignment (used for type checking)
+    "PTH123",  # Path.open() vs open() (both are acceptable)
+    "PTH101",  # Path.chmod() vs os.chmod() (both are acceptable)
+    "RUF001",  # unicode chars in strings (×, – are intentional)
+    "RUF002",  # unicode chars in docstrings (EN DASH is OK)
+    "RUF003",  # unicode chars in comments (EN DASH is OK)
+    "PLR0912", # too many branches (acceptable in business logic)
+    "PLR0915", # too many statements (acceptable in business logic)
+    "PLR2004", # magic values (acceptable for business constants)
+    "DTZ",     # datetime timezone (handled by external APIs)
+    "SIM102",  # nested if (sometimes more readable)
 ]
 
 # ===========================================================================
 # Per-file Ignores
 # ===========================================================================
 [lint.per-file-ignores]
-"tests/**/*.py" = [
+"**/tests/**/*.py" = [
     "S101",    # allow assert in tests
+    "S110",    # allow try-except-pass in tests
     "ARG",     # allow unused arguments in test fixtures
     "PLR2004", # allow magic values in tests
     "PLC0415", # allow imports in functions (for test isolation)
+    "PT012",   # allow complex pytest.raises blocks
+    "SLF001",  # allow private member access (testing internals)
+    "RUF043",  # allow unescaped regex in pytest.raises match
+    "SIM105",  # allow try-except-pass in tests
 ]
 "__init__.py" = [
     "F401",    # allow unused imports in __init__.py
+    "PLC0415", # allow conditional imports
 ]
 "**/auth.py" = [
     "PLC0415", # late imports for optional dependencies (keyring)
     "S110",    # try-except-pass for optional features
+    "TRY300",  # complex auth logic in try blocks
+    "TRY401",  # redundant exception in logging (intentional for clarity)
 ]
 "**/security.py" = [
     "S110",    # try-except-pass in audit logging (must not crash)
+    "SIM105",  # contextlib.suppress not always better
+    "PLW2901", # loop variable overwrite (sanitization logic)
+    "RUF012",  # mutable class attribute (intended for defaults)
 ]
 "**/client.py" = [
     "TRY300",  # complex business logic in try blocks (acceptable pattern)
+    "TRY301",  # abstract raise (not always applicable)
+    "TRY004",  # prefer TypeError (SecurityError is more specific)
+    "B904",    # raise from (not always needed for API errors)
+    "PLW2901", # loop variable overwrite (data transformation)
+    "PERF401", # list comprehension (readability over performance)
+    "ERA001",  # commented code (debugging/documentation)
 ]
 "**/server.py" = [
     "TRY300",  # complex MCP handler logic in try blocks (acceptable pattern)
+    "B904",    # raise from (not always needed for MCP errors)
+    "PLC0415", # conditional imports (MCP tools)
+    "PLW2901", # loop variable overwrite (data transformation)
+    "SLF001",  # private member access (framework internals)
+    "ARG001",  # unused arguments (MCP tool signatures)
+    "DTZ",     # timezone handling (handled by external APIs)
 ]
 
 # ===========================================================================

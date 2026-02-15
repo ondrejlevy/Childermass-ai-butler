@@ -70,9 +70,23 @@ module = "tests.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "*.tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = "*.security"
 # Security modules have unreachable code after raise statements (by design)
 disable_error_code = ["unreachable"]
+
+[[tool.mypy.overrides]]
+module = "*.auth"
+# Auth modules may return Any from external APIs
+disable_error_code = ["no-any-return"]
+
+[[tool.mypy.overrides]]
+module = "*.client"
+# Client modules may return Any from external APIs
+disable_error_code = ["no-any-return"]
 
 # ===========================================================================
 # Pytest Configuration

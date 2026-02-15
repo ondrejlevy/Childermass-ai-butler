@@ -337,7 +337,7 @@ class TestErrorSanitization:
 
     def test_sanitize_api_key(self):
         """Test API key sanitization."""
-        error = Exception("Error with key: abc123def456789012345678901234567890")
+        error = Exception("Error with key: abc123def456789012345678901234567890")  # gitleaks:allow
         sanitized = sanitize_error_message(error)
         assert "abc123def456789012345678901234567890" not in sanitized
         assert "[API_KEY]" in sanitized
@@ -450,7 +450,7 @@ class TestAuthentication:
         if not KEYRING_AVAILABLE:
             pytest.skip("Keyring not available")
 
-        mock_keyring.get_password.return_value = "test_api_key_12345678901234567890"
+        mock_keyring.get_password.return_value = "test_api_key_12345678901234567890"  # gitleaks:allow
 
         key = get_api_key()
         assert key == "test_api_key_12345678901234567890"
@@ -534,7 +534,7 @@ class TestWeatherClientMocked:
         }
         mock_get.return_value = mock_response
 
-        client = WeatherClient(api_key="test_key_12345678901234567890123456")
+        client = WeatherClient(api_key="test_key_12345678901234567890123456")  # gitleaks:allow
         weather = client.get_current_weather("London,UK")
 
         assert weather.temperature == 15.5
@@ -568,7 +568,7 @@ class TestWeatherClientMocked:
         mock_response.raise_for_status.side_effect = Exception("404 Not Found")
         mock_get.return_value = mock_response
 
-        client = WeatherClient(api_key="test_key_12345678901234567890123456")
+        client = WeatherClient(api_key="test_key_12345678901234567890123456")  # gitleaks:allow
 
         with pytest.raises(SecurityError, match="Location not found"):
             client.get_current_weather("InvalidCity123")

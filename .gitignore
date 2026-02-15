@@ -56,6 +56,13 @@ junit.xml
 .bandit
 bandit-report.json
 
+# ---- Security Scanning ----
+gitleaks-report.json
+gitleaks-report.sarif
+results.sarif
+trufflehog-report.json
+security-scan-results/
+
 # ---- IDE ----
 .vscode/
 .idea/

@@ -447,7 +447,7 @@ class WeatherClient:
 
         # Convert city to coordinates if needed
         if loc_type == "city":
-            coords = self.geocode_city(city)  # type: ignore[arg-type]
+            coords = self.geocode_city(city)
             lat, lon = coords.latitude, coords.longitude
             location_str = city
         else:

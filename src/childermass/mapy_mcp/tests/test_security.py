@@ -346,13 +346,13 @@ class TestSanitizeErrorMessage:
 
     def test_removes_api_key_from_query_param(self):
         msg = sanitize_error_message(
-            Exception("Error at https://api.mapy.com/v1/geocode?apiKey=abc123secret456key")
+            Exception("Error at https://api.mapy.com/v1/geocode?apiKey=abc123secret456key")  # gitleaks:allow
         )
         assert "abc123secret456key" not in msg
         assert "apiKey=[API_KEY]" in msg
 
     def test_removes_api_key_from_header(self):
-        msg = sanitize_error_message(Exception("Header X-Mapy-Api-Key: mySecretApiKey123"))
+        msg = sanitize_error_message(Exception("Header X-Mapy-Api-Key: mySecretApiKey123"))  # gitleaks:allow
         assert "mySecretApiKey123" not in msg
         assert "X-Mapy-Api-Key: [API_KEY]" in msg
 

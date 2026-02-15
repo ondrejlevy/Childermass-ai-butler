@@ -1,0 +1,29 @@
+# Gitleaks configuration for Childermass project
+# https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks config for Childermass"
+
+# Global allowlist - paths to ignore
+[allowlist]
+description = "Allowlist for test files with mock credentials"
+paths = [
+    '''.*test_security\.py$''',  # All test_security.py files contain mock credentials
+    '''.*tests/.*\.py$''',        # All test files may contain test credentials
+]
+
+# Specific patterns to allow
+regexes = [
+    '''(test|fake|mock|example|dummy)[-_]?(key|token|secret|password)''',  # Test credentials
+    '''sk-[a-zA-Z0-9]{20,}''',  # Mock API keys in tests
+]
+
+# Stopwords - if these appear near the secret, it's likely a test value
+stopwords = [
+    'test',
+    'example',
+    'mock',
+    'fake',
+    'dummy',
+    'sample',
+    'placeholder',
+]

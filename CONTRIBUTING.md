@@ -296,6 +296,11 @@ def process_input(user_input: str) -> str:
 - Validate all external inputs
 - Test error handling
 
+**Secrets Scanning:**
+- All code is scanned for accidentally committed secrets (Gitleaks, TruffleHog)
+- Test files with mock credentials must use `# gitleaks:allow` annotations
+- See [docs/SECRETS_SCANNING.md](docs/SECRETS_SCANNING.md) for configuration details
+
 ### Reporting Security Issues
 
 **Do NOT create public issues for security vulnerabilities.**
