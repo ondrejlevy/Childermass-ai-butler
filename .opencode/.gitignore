@@ -1,0 +1,13 @@
+# Node modules and lock files
+node_modules
+package.json
+bun.lock
+
+# OpenCode configuration with sensitive data
+# NEVER commit - contains credentials and API keys
+opencode.json
+
+# Keep tracked
+!opencode.example.json
+!agents/
+!.gitignore

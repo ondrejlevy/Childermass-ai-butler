@@ -1,0 +1,31 @@
+# .gitignore for Houston Gmail MCP
+
+# Credentials & tokens (NEVER commit these)
+gmail-credentials.json
+gmail-tokens*.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Audit logs
+gmail-audit.log
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/

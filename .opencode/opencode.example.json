@@ -1,0 +1,160 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "childermass",
+  "mcp": {
+    "loxone": {
+      "type": "remote",
+      "url": "http://localhost:8080/mcp",
+      "_comment": "Configure Loxone MCP server URL"
+    },
+    "rohlik": {
+      "type": "local",
+      "command": [
+        "npx",
+        "mcp-remote",
+        "https://mcp.rohlik.cz/mcp",
+        "--header",
+        "rhl-email: ${RHL_EMAIL}",
+        "--header",
+        "rhl-pass: ${RHL_PASS}"
+      ],
+      "environment": {
+        "RHL_EMAIL": "your-email@example.com",
+        "RHL_PASS": "your-password-here"
+      },
+      "_comment": "Replace with your actual Rohlik credentials"
+    },
+    "gmail": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.gmail_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true,
+      "_comment": "Update paths to match your installation"
+    },
+    "calendar": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.calendar_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true
+    },
+    "contacts": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.contacts_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true
+    },
+    "keep": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.keep_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": false
+    },
+    "protect": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.protect_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true,
+      "_comment": "Configure using: python -m childermass.protect_mcp.auth --setup"
+    },
+    "tasks": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.tasks_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true
+    },
+    "weather": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.weather_mcp.server"
+      ],      
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      }
+    },
+    "places": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.places_mcp.server"
+      ],      
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      }
+    },
+    "mapy": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.mapy_mcp.server"
+      ],  
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "_comment": "Configure API key: python -m childermass.mapy_mcp.auth --set-api-key YOUR_KEY"
+    },
+    "network": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.network_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "_comment": "Configure using: python -m childermass.network_mcp.auth --setup"
+    },
+    "memory": {
+      "type": "local",
+      "command": [
+        "/path/to/your/venv/bin/python",
+        "-m",
+        "childermass.memory_mcp.server"
+      ],
+      "environment": {
+        "PYTHONPATH": "/path/to/your/project/src"
+      },
+      "enabled": true
+    }
+  } 
+}

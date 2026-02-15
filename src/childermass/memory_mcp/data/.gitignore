@@ -1,0 +1,5 @@
+# Exclude SQLite database files (contain personal data)
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm

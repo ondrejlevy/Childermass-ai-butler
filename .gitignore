@@ -1,0 +1,54 @@
+# =============================================================================
+# Childermass Home Agent – Root .gitignore
+# =============================================================================
+
+# ---- Credentials & tokens (NEVER commit) ----
+*-credentials.json
+*-tokens*.json
+*-token.json
+*-token-*.json
+*-config.json
+*_api_key
+*.pem
+*.key
+
+# ---- OpenCode configuration (contains sensitive data) ----
+.opencode/opencode.json
+
+# ---- OpenCode skills (private family data) ----
+.opencode/skills/family-info/
+.opencode/skills/loxone-home/
+
+# ---- Audit logs ----
+*-audit.log
+*-audit.log.*
+
+# ---- Databases (may contain personal data) ----
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+test_*.sqlite*
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# ---- Testing ----
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- IDE ----
+.vscode/
+.idea/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
