@@ -1,0 +1,33 @@
+# CODEOWNERS file for Childermass project
+# This file defines who is responsible for code in this repository.
+# 
+# Each line is a file pattern followed by one or more owners.
+# Owners will be requested for review when someone opens a pull request
+# that modifies files matching the pattern.
+#
+# Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repository
+# This user will be requested for review on all PRs unless a later match takes precedence
+* @ondrejlevy
+
+# Future expansion examples (commented out):
+# 
+# Documentation files
+# *.md @ondrejlevy
+# /docs/ @ondrejlevy
+#
+# Security-related files
+# SECURITY.md @ondrejlevy
+# /docs/SECRETS_SCANNING*.md @ondrejlevy
+#
+# CI/CD configuration
+# /.github/workflows/ @ondrejlevy
+# .pre-commit-config.yaml @ondrejlevy
+# pyproject.toml @ondrejlevy
+#
+# Individual MCP servers
+# /src/childermass/calendar_mcp/ @ondrejlevy
+# /src/childermass/gmail_mcp/ @ondrejlevy
+# /src/childermass/protect_mcp/ @ondrejlevy
+# ... (add more as needed)

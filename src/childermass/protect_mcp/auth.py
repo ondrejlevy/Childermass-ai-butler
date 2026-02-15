@@ -224,7 +224,7 @@ def get_credentials(config: dict | None | object = _GET_CREDENTIALS_SENTINEL) ->
 
 def verify_ssl(config: dict | None = None) -> bool:
     """Check if SSL verification is enabled.
-    
+
     Returns True by default for security. Only returns False if explicitly
     configured with verify_ssl: false in config.
     """
@@ -232,19 +232,20 @@ def verify_ssl(config: dict | None = None) -> bool:
         config = load_config()
     if config is None:
         return True  # Secure default
-    
+
     # Default to True (secure), only disable if explicitly set to False
     verify = config.get("verify_ssl", True)
-    
+
     if not verify:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(
             "SSL certificate verification is DISABLED. "
             "This makes the connection vulnerable to man-in-the-middle attacks. "
             "Only use this in trusted networks with self-signed certificates."
         )
-    
+
     return verify
 
 
