@@ -5,8 +5,12 @@ with input validation, rate limiting, and audit logging. It manages a singleton
 Memory instance and provides both memory storage/recall and temporal graph operations.
 """
 
+import contextlib
 import json
 import logging
+import math
+import os
+import time as time_mod
 import uuid
 from datetime import datetime
 from typing import Any
@@ -27,15 +31,18 @@ from .security import (  # noqa: E402
     rate_limiter,
     sanitize_error_message,
     validate_category,
+    validate_github_repo,
     validate_limit,
     validate_memory_content,
     validate_memory_id,
     validate_predicate,
     validate_query,
+    validate_salience_boost,
     validate_sector,
     validate_subject,
     validate_tags,
     validate_temporal_date,
+    validate_url,
 )
 
 
@@ -86,13 +93,16 @@ class MemoryClient:
         content: str,
         category: str,
         tags: list[str] | None = None,
+        en_summary: str | None = None,
     ) -> dict[str, Any]:
-        """Store a new memory.
+        """Store a new memory with optional bilingual support.
 
         Args:
             content: Text content to memorize.
             category: Childermass category (preference, routine, fact, feedback, pattern).
             tags: Optional tags for organization.
+            en_summary: Optional English translation/summary for bilingual recall.
+                        Appended to content so both languages are embedded together.
 
         Returns:
             dict: Store result with memory ID and sector classification.
@@ -105,14 +115,26 @@ class MemoryClient:
         tags = validate_tags(tags)
         rate_limiter.check("store")
 
+        # Bilingual support: if en_summary provided, create composite content
+        # so embeddings capture both languages for cross-language recall
+        store_content = content
+        lang_meta: dict[str, str] = {}
+        if en_summary:
+            en_summary = en_summary.strip()
+            if len(en_summary) >= 3:
+                store_content = f"{content}\n\n[EN] {en_summary}"
+                lang_meta = {"original_lang": "cs", "en_summary": en_summary}
+
         # Add category as a tag for filtering
         all_tags = [f"category:{category}", *tags]
+        if lang_meta:
+            all_tags.append("bilingual")
 
         result = await self.memory.add(
-            content,
+            store_content,
             user_id=DEFAULT_USER_ID,
             tags=all_tags,
-            meta={"childermass_category": category},
+            meta={"childermass_category": category, **lang_meta},
         )
 
         memory_id = result.get("id") or result.get("root_memory_id", "unknown")
@@ -124,6 +146,7 @@ class MemoryClient:
                 "content_preview": content[:80],
                 "category": category,
                 "tags": tags,
+                "bilingual": bool(lang_meta),
             },
         )
 
@@ -131,6 +154,7 @@ class MemoryClient:
             "id": memory_id,
             "sector": result.get("primary_sector", "unknown"),
             "category": category,
+            "bilingual": bool(lang_meta),
             "success": True,
         }
 
@@ -139,13 +163,16 @@ class MemoryClient:
         query: str,
         limit: int = 5,
         min_score: float = 0.3,
+        also_search: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Search memories by semantic similarity.
+        """Search memories by semantic similarity with optional bilingual search.
 
         Args:
             query: Search query text.
             limit: Maximum number of results.
             min_score: Minimum similarity score (0-1).
+            also_search: Additional query phrasings (e.g. translations) to
+                         search with. Results are merged and deduplicated.
 
         Returns:
             dict: Search results with matching memories.
@@ -157,11 +184,43 @@ class MemoryClient:
         limit = validate_limit(limit)
         rate_limiter.check("recall")
 
+        # Primary search
         results = await self.memory.search(
             query,
             user_id=DEFAULT_USER_ID,
             limit=limit,
         )
+
+        # Bilingual / multi-query search: run additional queries and merge
+        if also_search:
+            seen_ids: set[str] = set()
+            all_results = list(results)
+            for r in all_results:
+                rid = r.get("id", "")
+                if rid:
+                    seen_ids.add(rid)
+
+            for alt_query in also_search[:3]:  # max 3 alternative queries
+                alt_query = alt_query.strip()
+                if len(alt_query) < 2:
+                    continue
+                try:
+                    alt_results = await self.memory.search(
+                        alt_query,
+                        user_id=DEFAULT_USER_ID,
+                        limit=limit,
+                    )
+                    for r in alt_results:
+                        rid = r.get("id", "")
+                        if rid and rid not in seen_ids:
+                            seen_ids.add(rid)
+                            all_results.append(r)
+                except Exception:
+                    logger.debug("Alternative query failed: %s", alt_query)
+
+            # Re-sort all results by score descending
+            all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
+            results = all_results[:limit]
 
         memories = []
         for r in results:
@@ -184,6 +243,7 @@ class MemoryClient:
             "memories": memories,
             "count": len(memories),
             "query": query,
+            "bilingual": bool(also_search),
         }
 
     async def recall_by_sector(
@@ -390,6 +450,304 @@ class MemoryClient:
             return {"success": True, "deleted_id": memory_id}
         except Exception as e:
             return {"error": f"Failed to delete memory: {sanitize_error_message(e)}"}
+
+    # ========================================================================
+    # Reinforcement
+    # ========================================================================
+
+    async def reinforce(self, memory_id: str, boost: float = 0.1) -> dict[str, Any]:
+        """Reinforce a memory by boosting its salience.
+
+        Reinforcement makes a memory more important and resistant to decay.
+        It also strengthens any waypoint (associative link) connections.
+
+        Args:
+            memory_id: Memory identifier to reinforce.
+            boost: Salience boost amount (0.01-0.5, default 0.1).
+
+        Returns:
+            dict: Reinforcement result with old and new salience.
+
+        Raises:
+            SecurityError: If input validation fails.
+        """
+        memory_id = validate_memory_id(memory_id)
+        boost = validate_salience_boost(boost)
+        rate_limiter.check("reinforce")
+
+        # Ensure memory is initialized
+        _ = self.memory
+
+        # First try the SDK's reinforce if available
+        try:
+            result = await self.memory.reinforce(memory_id)
+            audit_log("reinforce", details={"memory_id": memory_id, "method": "sdk"})
+            return {
+                "memory_id": memory_id,
+                "method": "sdk",
+                "success": True,
+                **(dict(result.items()) if isinstance(result, dict) else {}),
+            }
+        except (AttributeError, NotImplementedError):
+            pass  # SDK doesn't support reinforce; fall back to manual
+        except Exception as exc:
+            logger.debug("SDK reinforce failed, falling back to manual: %s", exc)
+
+        # Manual reinforcement: boost salience + update last_seen_at
+        row = om_db.fetchone(
+            "SELECT salience, last_seen_at FROM memories WHERE id = ?",
+            (memory_id,),
+        )
+        if not row:
+            return {"error": f"Memory not found: {memory_id}"}
+
+        old_salience = float(row[0] or 0.5)
+        new_salience = min(1.0, old_salience + boost)
+        now_ms = int(time_mod.time() * 1000)
+
+        om_db.execute(
+            "UPDATE memories SET salience = ?, last_seen_at = ? WHERE id = ?",
+            (new_salience, now_ms, memory_id),
+        )
+
+        # Also strengthen any waypoint connections
+        with contextlib.suppress(Exception):
+            om_db.execute(
+                "UPDATE waypoints SET weight = MIN(1.0, weight + 0.05), updated_at = ? WHERE src_id = ? OR dst_id = ?",
+                (now_ms, memory_id, memory_id),
+            )
+
+        audit_log(
+            "reinforce",
+            details={
+                "memory_id": memory_id,
+                "old_salience": round(old_salience, 3),
+                "new_salience": round(new_salience, 3),
+                "boost": boost,
+                "method": "manual",
+            },
+        )
+
+        return {
+            "memory_id": memory_id,
+            "old_salience": round(old_salience, 3),
+            "new_salience": round(new_salience, 3),
+            "boost": boost,
+            "success": True,
+        }
+
+    # ========================================================================
+    # Connectors (GitHub, Web Crawler)
+    # ========================================================================
+
+    async def ingest_github(self, repo: str) -> dict[str, Any]:
+        """Ingest data from a GitHub repository into memory.
+
+        Uses the OpenMemory source connector API. Requires GITHUB_TOKEN
+        or GH_TOKEN environment variable.
+
+        Args:
+            repo: Repository in 'owner/repo' format.
+
+        Returns:
+            dict: Ingestion result with count of memories created.
+
+        Raises:
+            SecurityError: If input validation fails.
+        """
+        repo = validate_github_repo(repo)
+        rate_limiter.check("ingest")
+
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if not token:
+            return {
+                "error": "GitHub token not configured. Set GITHUB_TOKEN or GH_TOKEN environment variable.",
+                "success": False,
+            }
+
+        try:
+            github = self.memory.source("github")
+            await github.connect(token=token)
+            result = await github.ingest_all(repo=repo)
+
+            audit_log(
+                "ingest_github",
+                details={"repo": repo, "result_type": type(result).__name__},
+            )
+
+            if isinstance(result, dict):
+                return {"success": True, "repo": repo, **result}
+            return {"success": True, "repo": repo, "result": str(result)}
+        except AttributeError:
+            return {
+                "error": "OpenMemory SDK version does not support source connectors. "
+                "Upgrade to openmemory-py >= 1.3.0 with connector support.",
+                "success": False,
+            }
+        except Exception as e:
+            return {
+                "error": f"GitHub ingestion failed: {sanitize_error_message(e)}",
+                "success": False,
+            }
+
+    async def ingest_web(self, url: str) -> dict[str, Any]:
+        """Crawl and ingest content from a URL into memory.
+
+        Uses the OpenMemory web_crawler source connector.
+
+        Args:
+            url: URL to crawl and ingest.
+
+        Returns:
+            dict: Ingestion result with count of memories created.
+
+        Raises:
+            SecurityError: If input validation fails.
+        """
+        url = validate_url(url)
+        rate_limiter.check("ingest")
+
+        try:
+            crawler = self.memory.source("web_crawler")
+            result = await crawler.ingest(url=url)
+
+            audit_log(
+                "ingest_web",
+                details={"url": url, "result_type": type(result).__name__},
+            )
+
+            if isinstance(result, dict):
+                return {"success": True, "url": url, **result}
+            return {"success": True, "url": url, "result": str(result)}
+        except AttributeError:
+            return {
+                "error": "OpenMemory SDK version does not support source connectors. "
+                "Upgrade to openmemory-py >= 1.3.0 with connector support.",
+                "success": False,
+            }
+        except Exception as e:
+            return {"error": f"Web ingestion failed: {sanitize_error_message(e)}", "success": False}
+
+    # ========================================================================
+    # Decay & Waypoint Operations
+    # ========================================================================
+
+    async def run_decay(self) -> dict[str, Any]:
+        """Run memory decay processing on all memories.
+
+        Applies sector-specific decay rates to reduce salience over time.
+        Memories that haven't been recalled recently lose importance.
+        Formula: new_salience = salience * e^(-decay_lambda * days_since_last_seen)
+
+        Returns:
+            dict: Decay statistics (total processed, updated count).
+        """
+        rate_limiter.check("decay")
+
+        # Ensure memory is initialized
+        _ = self.memory
+
+        rows = om_db.fetchall(
+            "SELECT id, salience, decay_lambda, last_seen_at, created_at "
+            "FROM memories WHERE user_id = ?",
+            (DEFAULT_USER_ID,),
+        )
+
+        now = time_mod.time()
+        updated = 0
+        total = len(rows or [])
+
+        for row in rows or []:
+            mem_id, salience, decay_lambda, last_seen, created_at = row
+            if salience is None or decay_lambda is None:
+                continue
+
+            # Determine last activity timestamp
+            last_ts = last_seen or created_at or now
+            try:
+                last_ts_float = float(last_ts)
+                # Timestamps in milliseconds
+                if last_ts_float > 4_000_000_000:
+                    last_ts_float = last_ts_float / 1000.0
+            except (ValueError, TypeError):
+                continue
+
+            days = (now - last_ts_float) / 86400.0
+            if days <= 0:
+                continue
+
+            new_salience = float(salience) * math.exp(-float(decay_lambda) * days)
+            new_salience = max(0.001, new_salience)  # never fully zero
+
+            if abs(new_salience - float(salience)) > 0.001:
+                om_db.execute(
+                    "UPDATE memories SET salience = ? WHERE id = ?",
+                    (new_salience, mem_id),
+                )
+                updated += 1
+
+        audit_log("decay", details={"total": total, "updated": updated})
+
+        return {
+            "total_processed": total,
+            "updated": updated,
+            "success": True,
+        }
+
+    async def get_waypoints(self, memory_id: str | None = None) -> dict[str, Any]:
+        """Get waypoint (associative link) connections.
+
+        Waypoints are single-waypoint links between semantically related memories.
+        They enable graph traversal during recall for better results.
+
+        Args:
+            memory_id: If provided, get links for this specific memory.
+                       If None, return top 50 strongest links.
+
+        Returns:
+            dict: Waypoint connections with source, target, and weight.
+        """
+        rate_limiter.check("get")
+
+        # Ensure memory is initialized
+        _ = self.memory
+
+        try:
+            if memory_id:
+                memory_id = validate_memory_id(memory_id)
+                rows = om_db.fetchall(
+                    "SELECT src_id, dst_id, weight FROM waypoints "
+                    "WHERE src_id = ? OR dst_id = ? ORDER BY weight DESC",
+                    (memory_id, memory_id),
+                )
+            else:
+                rows = om_db.fetchall(
+                    "SELECT src_id, dst_id, weight FROM waypoints ORDER BY weight DESC LIMIT 50",
+                    (),
+                )
+        except Exception:
+            # waypoints table may not exist
+            return {
+                "waypoints": [],
+                "count": 0,
+                "note": "Waypoints table not available (may require real embeddings)",
+            }
+
+        links = []
+        for row in rows or []:
+            links.append(
+                {
+                    "source": row[0],
+                    "target": row[1],
+                    "weight": round(float(row[2]), 3),
+                }
+            )
+
+        return {
+            "waypoints": links,
+            "count": len(links),
+            "memory_id": memory_id,
+        }
 
     # ========================================================================
     # Temporal Knowledge Graph Operations

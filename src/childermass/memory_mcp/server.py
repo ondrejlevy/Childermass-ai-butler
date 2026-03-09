@@ -32,6 +32,7 @@ async def memory_store(
     content: str,
     category: str,
     tags: list[str] | None = None,
+    en_summary: str | None = None,
 ) -> dict:
     """
     Store a memory (preference, routine, fact, feedback, or pattern).
@@ -39,22 +40,28 @@ async def memory_store(
     Use this to persist useful information about the household, user
     preferences, learned patterns, or explicit feedback.
 
+    BILINGUAL SUPPORT: When storing content in Czech (or any non-English
+    language), always provide an English translation in en_summary.
+    This ensures the memory can be found when searching in either language.
+
     Args:
         content: Text to memorize. Be specific and concise.
         category: One of: preference, routine, fact, feedback, pattern, temporal.
         tags: Optional tags for organization (e.g. ["bedroom", "temperature"]).
+        en_summary: Optional English translation/summary of the content.
+                    IMPORTANT: Always provide this when content is not in English.
 
     Returns:
         Stored memory info with assigned ID and cognitive sector.
 
     Examples:
         memory_store("User prefers 21°C in the bedroom at night", "preference", ["bedroom", "temperature"])
+        memory_store("Uživatel preferuje 21°C v ložnici", "preference", ["bedroom"], "User prefers 21°C in bedroom")
         memory_store("Monday garbage collection at 7:00 AM", "routine", ["garbage", "monday"])
-        memory_store("User dislikes verbose responses", "feedback", ["communication"])
     """
     try:
         client = get_client()
-        return await client.store(content, category, tags)
+        return await client.store(content, category, tags, en_summary)
     except SecurityError as e:
         return {"error": str(e)}
     except Exception as e:
@@ -66,6 +73,7 @@ async def memory_recall(
     query: str,
     limit: int = 5,
     min_score: float = 0.3,
+    also_search: list[str] | None = None,
 ) -> dict:
     """
     Search memories by semantic similarity.
@@ -73,22 +81,29 @@ async def memory_recall(
     Use this to recall relevant memories before making decisions or
     answering questions about the household.
 
+    BILINGUAL SUPPORT: When searching for memories that may have been
+    stored in a different language, provide translations in also_search.
+    For example, if querying in English but memories are in Czech,
+    add the Czech translation to also_search.
+
     Args:
         query: Natural language search query.
         limit: Maximum number of results (1-100, default 5).
         min_score: Minimum similarity score 0-1 (default 0.3).
+        also_search: Alternative query phrasings or translations to search
+                     with. Results are merged and deduplicated. Max 3 entries.
 
     Returns:
         Matching memories sorted by relevance with scores.
 
     Examples:
         memory_recall("bedroom temperature preferences")
+        memory_recall("teplota v ložnici", also_search=["bedroom temperature"])
         memory_recall("what does the user dislike", limit=3)
-        memory_recall("morning routines", min_score=0.5)
     """
     try:
         client = get_client()
-        return await client.recall(query, limit, min_score)
+        return await client.recall(query, limit, min_score, also_search)
     except SecurityError as e:
         return {"error": str(e)}
     except Exception as e:
@@ -184,6 +199,157 @@ async def memory_forget(memory_id: str) -> dict:
     try:
         client = get_client()
         return await client.forget(memory_id)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+async def memory_reinforce(
+    memory_id: str,
+    boost: float = 0.1,
+) -> dict:
+    """
+    Reinforce a memory — boost its importance and resistance to decay.
+
+    Use this when a memory proves useful, is referenced again, or the
+    user explicitly confirms its importance. Reinforcement increases
+    salience and strengthens associative waypoint links.
+
+    Args:
+        memory_id: The memory identifier to reinforce.
+        boost: Salience boost amount (0.01-0.5, default 0.1).
+               Small boosts (~0.05) for indirect relevance,
+               larger boosts (~0.2-0.3) for explicit user confirmation.
+
+    Returns:
+        Old and new salience values.
+
+    Examples:
+        memory_reinforce("abc-123")  # default boost
+        memory_reinforce("abc-123", boost=0.3)  # strong reinforcement
+    """
+    try:
+        client = get_client()
+        return await client.reinforce(memory_id, boost)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Connector tools (data ingestion)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def memory_ingest_github(repo: str) -> dict:
+    """
+    Ingest data from a GitHub repository into memory.
+
+    Imports README, issues, code, and other content from a GitHub repo.
+    Requires GITHUB_TOKEN or GH_TOKEN environment variable to be set.
+
+    Args:
+        repo: Repository in 'owner/repo' format (e.g. "CaviraOSS/OpenMemory").
+
+    Returns:
+        Ingestion result with count of memories created.
+
+    Examples:
+        memory_ingest_github("CaviraOSS/OpenMemory")
+        memory_ingest_github("user/my-project")
+    """
+    try:
+        client = get_client()
+        return await client.ingest_github(repo)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+async def memory_ingest_web(url: str) -> dict:
+    """
+    Crawl and ingest content from a URL into memory.
+
+    Downloads a web page, extracts text content, and stores it as
+    memories. Useful for bringing external knowledge into the household
+    memory system.
+
+    Args:
+        url: URL to crawl (must start with http:// or https://).
+             Private/internal addresses are blocked for security.
+
+    Returns:
+        Ingestion result with count of memories created.
+
+    Examples:
+        memory_ingest_web("https://example.com/article")
+        memory_ingest_web("https://docs.python.org/3/tutorial/")
+    """
+    try:
+        client = get_client()
+        return await client.ingest_web(url)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Decay & Waypoint tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def memory_decay() -> dict:
+    """
+    Run memory decay processing.
+
+    Applies time-based decay to all memories. Memories that haven't been
+    recalled or reinforced recently will lose salience (importance).
+    Each cognitive sector has a different decay rate:
+    - episodic: fast decay (events fade quickly)
+    - emotional: fast decay
+    - procedural: medium decay
+    - semantic: slow decay (facts persist)
+    - reflective: slowest decay (insights last longest)
+
+    Run this periodically (e.g. daily) to keep memory salience accurate.
+
+    Returns:
+        Decay statistics: total memories processed and how many were updated.
+    """
+    try:
+        client = get_client()
+        return await client.run_decay()
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+async def memory_waypoints(memory_id: str | None = None) -> dict:
+    """
+    Get waypoint (associative link) connections between memories.
+
+    Waypoints are graph edges linking semantically related memories.
+    They enable associative recall — finding related memories through
+    graph traversal, not just vector similarity.
+
+    Args:
+        memory_id: Optional. If provided, show links for this memory.
+                   If omitted, show the top 50 strongest links.
+
+    Returns:
+        List of waypoint connections with source, target, and weight.
+    """
+    try:
+        client = get_client()
+        return await client.get_waypoints(memory_id)
     except SecurityError as e:
         return {"error": str(e)}
     except Exception as e:

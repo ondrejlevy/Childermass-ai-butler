@@ -106,12 +106,14 @@ ignore = [
 "**/auth.py" = [
     "PLC0415", # late imports for optional dependencies (keyring)
     "S110",    # try-except-pass for optional features
+    "T201",    # print() used for CLI output
     "TRY300",  # complex auth logic in try blocks
     "TRY401",  # redundant exception in logging (intentional for clarity)
 ]
 "**/security.py" = [
     "S110",    # try-except-pass in audit logging (must not crash)
     "SIM105",  # contextlib.suppress not always better
+    "PLC0415", # lazy imports (RotatingFileHandler)
     "PLW2901", # loop variable overwrite (sanitization logic)
     "RUF012",  # mutable class attribute (intended for defaults)
 ]
@@ -123,6 +125,11 @@ ignore = [
     "PLW2901", # loop variable overwrite (data transformation)
     "PERF401", # list comprehension (readability over performance)
     "ERA001",  # commented code (debugging/documentation)
+]
+"**/carriers/**/*.py" = [
+    "ARG002",  # unused method arguments (required by abstract interface)
+    "PLR0911", # too many return statements (status mapping logic)
+    "RUF012",  # mutable class attributes (class-level pattern lists)
 ]
 "**/server.py" = [
     "TRY300",  # complex MCP handler logic in try blocks (acceptable pattern)

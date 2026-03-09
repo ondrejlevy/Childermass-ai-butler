@@ -25,6 +25,9 @@ class SecurityError(Exception):
 # UniFi Network API uses UUIDs for IDs
 _UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
+# MAC address pattern (aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff)
+_MAC_PATTERN = re.compile(r"^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$")
+
 # VLAN ID range
 MIN_VLAN_ID = 1
 MAX_VLAN_ID = 4094
@@ -66,6 +69,24 @@ ALLOWED_CONNECTION_STATES = {
 
 # Allowed schedule modes
 ALLOWED_SCHEDULE_MODES = {"ALWAYS", "CUSTOM"}
+
+# Allowed stat periods for classic API
+ALLOWED_STAT_PERIODS = {"hourly", "daily", "5minutes"}
+
+# Allowed DPI stat types
+ALLOWED_DPI_TYPES = {"by_app", "by_cat"}
+
+# History hours constraints
+MIN_HISTORY_HOURS = 1
+MAX_HISTORY_HOURS = 8760  # 1 year
+
+# Event / alarm result limit
+MAX_EVENT_LIMIT = 10000
+DEFAULT_EVENT_LIMIT = 100
+
+# Timestamp range (disallow dates before 2010 and after 2100)
+MIN_TIMESTAMP_MS = 1_262_304_000_000  # 2010-01-01
+MAX_TIMESTAMP_MS = 4_102_444_800_000  # 2100-01-01
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +350,94 @@ def validate_filter_expression(value: str | None) -> str | None:
     return value
 
 
+def validate_mac_address(mac: str, field_name: str = "MAC address") -> str:
+    """
+    Validate and normalise a MAC address.
+
+    Accepts colon or hyphen separators.  Returns lowercase colon-separated.
+    """
+    if not mac or not isinstance(mac, str):
+        msg = f"{field_name} is required"
+        raise SecurityError(msg)
+
+    mac = mac.strip().lower().replace("-", ":")
+
+    if not _MAC_PATTERN.match(mac):
+        msg = f"Invalid {field_name} format: expected aa:bb:cc:dd:ee:ff"
+        raise SecurityError(msg)
+
+    return mac
+
+
+def validate_period(period: str) -> str:
+    """Validate stat period (hourly, daily, 5minutes)."""
+    if not period or not isinstance(period, str):
+        msg = "period is required"
+        raise SecurityError(msg)
+
+    period = period.strip().lower()
+
+    if period not in ALLOWED_STAT_PERIODS:
+        msg = f"Invalid period: {period!r}. Allowed: {', '.join(sorted(ALLOWED_STAT_PERIODS))}"
+        raise SecurityError(msg)
+
+    return period
+
+
+def validate_timestamp_ms(value: int, field_name: str = "timestamp") -> int:
+    """Validate a millisecond-epoch timestamp."""
+    if not isinstance(value, int):
+        msg = f"{field_name} must be an integer (milliseconds since epoch)"
+        raise SecurityError(msg)
+
+    if value < MIN_TIMESTAMP_MS or value > MAX_TIMESTAMP_MS:
+        msg = f"{field_name} out of range (must be between 2010 and 2100)"
+        raise SecurityError(msg)
+
+    return value
+
+
+def validate_dpi_type(dpi_type: str) -> str:
+    """Validate DPI aggregation type."""
+    if not dpi_type or not isinstance(dpi_type, str):
+        msg = "dpi_type is required"
+        raise SecurityError(msg)
+
+    dpi_type = dpi_type.strip().lower()
+
+    if dpi_type not in ALLOWED_DPI_TYPES:
+        msg = f"Invalid dpi_type: {dpi_type!r}. Allowed: {', '.join(sorted(ALLOWED_DPI_TYPES))}"
+        raise SecurityError(msg)
+
+    return dpi_type
+
+
+def validate_history_hours(hours: int) -> int:
+    """Validate history lookback in hours."""
+    if not isinstance(hours, int) or hours < MIN_HISTORY_HOURS:
+        msg = f"history_hours must be a positive integer (min {MIN_HISTORY_HOURS})"
+        raise SecurityError(msg)
+
+    if hours > MAX_HISTORY_HOURS:
+        msg = f"history_hours too large: max {MAX_HISTORY_HOURS}"
+        raise SecurityError(msg)
+
+    return hours
+
+
+def validate_event_limit(limit: int) -> int:
+    """Validate event/alarm result limit."""
+    if not isinstance(limit, int) or limit < 1:
+        msg = "limit must be a positive integer"
+        raise SecurityError(msg)
+
+    if limit > MAX_EVENT_LIMIT:
+        msg = f"limit too large: max {MAX_EVENT_LIMIT}"
+        raise SecurityError(msg)
+
+    return limit
+
+
 def validate_console_address(address: str) -> str:
     """
     Validate console IP address or hostname.
@@ -434,6 +543,13 @@ class RateLimiter:
         "info": (60, 60 / 60),
         "read": (60, 60 / 60),
         "write": (10, 10 / 60),
+        # New categories for classic API
+        "stats": (30, 30 / 60),
+        "dpi": (20, 20 / 60),
+        "security": (30, 30 / 60),
+        "clients": (30, 30 / 60),
+        "devices": (30, 30 / 60),
+        "rf": (20, 20 / 60),
     }
 
     def __init__(self) -> None:

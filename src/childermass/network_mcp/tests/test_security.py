@@ -27,21 +27,30 @@ from childermass.network_mcp.security import (
     MAX_VOUCHER_RATE_LIMIT_KBPS,
     MAX_VOUCHER_TIME_LIMIT_MINUTES,
     MIN_VLAN_ID,
+    MAX_EVENT_LIMIT,
+    MAX_HISTORY_HOURS,
+    MIN_HISTORY_HOURS,
     RateLimiter,
     SecurityError,
     audit_log,
     sanitize_error_message,
     validate_console_address,
+    validate_dpi_type,
+    validate_event_limit,
     validate_filter_expression,
+    validate_history_hours,
     validate_ip_version,
+    validate_mac_address,
     validate_max_results,
     validate_network_id,
     validate_network_name,
     validate_offset,
+    validate_period,
     validate_policy_action,
     validate_policy_id,
     validate_policy_name,
     validate_site_id,
+    validate_timestamp_ms,
     validate_uuid,
     validate_vlan_id,
     validate_voucher_id,
@@ -501,6 +510,191 @@ class TestValidateConsoleAddress:
 
 
 # =========================================================================
+# MAC address validation
+# =========================================================================
+
+
+class TestValidateMacAddress:
+    def test_valid_colon_separated(self):
+        assert validate_mac_address("aa:bb:cc:dd:ee:ff") == "aa:bb:cc:dd:ee:ff"
+
+    def test_valid_hyphen_separated(self):
+        assert validate_mac_address("AA-BB-CC-DD-EE-FF") == "aa:bb:cc:dd:ee:ff"
+
+    def test_normalises_to_lowercase(self):
+        assert validate_mac_address("AA:BB:CC:DD:EE:FF") == "aa:bb:cc:dd:ee:ff"
+
+    def test_strips_whitespace(self):
+        assert validate_mac_address("  aa:bb:cc:dd:ee:ff  ") == "aa:bb:cc:dd:ee:ff"
+
+    def test_rejects_empty(self):
+        with pytest.raises(SecurityError, match="required"):
+            validate_mac_address("")
+
+    def test_rejects_none(self):
+        with pytest.raises(SecurityError, match="required"):
+            validate_mac_address(None)  # type: ignore
+
+    def test_rejects_short(self):
+        with pytest.raises(SecurityError, match="Invalid"):
+            validate_mac_address("aa:bb:cc")
+
+    def test_rejects_no_separators(self):
+        with pytest.raises(SecurityError, match="Invalid"):
+            validate_mac_address("aabbccddeeff")
+
+    def test_rejects_non_hex(self):
+        with pytest.raises(SecurityError, match="Invalid"):
+            validate_mac_address("gg:hh:ii:jj:kk:ll")
+
+    def test_custom_field_name(self):
+        with pytest.raises(SecurityError, match="Device MAC"):
+            validate_mac_address("invalid", "Device MAC")
+
+
+# =========================================================================
+# Period validation
+# =========================================================================
+
+
+class TestValidatePeriod:
+    def test_hourly(self):
+        assert validate_period("hourly") == "hourly"
+
+    def test_daily(self):
+        assert validate_period("daily") == "daily"
+
+    def test_5minutes(self):
+        assert validate_period("5minutes") == "5minutes"
+
+    def test_case_insensitive(self):
+        assert validate_period("HOURLY") == "hourly"
+        assert validate_period("Daily") == "daily"
+
+    def test_strips_whitespace(self):
+        assert validate_period("  hourly  ") == "hourly"
+
+    def test_rejects_invalid(self):
+        with pytest.raises(SecurityError, match="Invalid period"):
+            validate_period("weekly")
+
+    def test_rejects_empty(self):
+        with pytest.raises(SecurityError, match="required"):
+            validate_period("")
+
+
+# =========================================================================
+# Timestamp validation
+# =========================================================================
+
+
+class TestValidateTimestampMs:
+    def test_valid(self):
+        ts = 1_700_000_000_000  # ~2023
+        assert validate_timestamp_ms(ts) == ts
+
+    def test_min_boundary(self):
+        from childermass.network_mcp.security import MIN_TIMESTAMP_MS
+
+        assert validate_timestamp_ms(MIN_TIMESTAMP_MS) == MIN_TIMESTAMP_MS
+
+    def test_rejects_too_old(self):
+        with pytest.raises(SecurityError, match="out of range"):
+            validate_timestamp_ms(1_000_000_000)  # too small (seconds, not ms)
+
+    def test_rejects_too_future(self):
+        with pytest.raises(SecurityError, match="out of range"):
+            validate_timestamp_ms(5_000_000_000_000)
+
+    def test_rejects_non_int(self):
+        with pytest.raises(SecurityError, match="integer"):
+            validate_timestamp_ms("1700000000000")  # type: ignore
+
+
+# =========================================================================
+# DPI type validation
+# =========================================================================
+
+
+class TestValidateDpiType:
+    def test_by_app(self):
+        assert validate_dpi_type("by_app") == "by_app"
+
+    def test_by_cat(self):
+        assert validate_dpi_type("by_cat") == "by_cat"
+
+    def test_case_insensitive(self):
+        assert validate_dpi_type("BY_APP") == "by_app"
+
+    def test_strips_whitespace(self):
+        assert validate_dpi_type("  by_cat  ") == "by_cat"
+
+    def test_rejects_invalid(self):
+        with pytest.raises(SecurityError, match="Invalid dpi_type"):
+            validate_dpi_type("by_user")
+
+    def test_rejects_empty(self):
+        with pytest.raises(SecurityError, match="required"):
+            validate_dpi_type("")
+
+
+# =========================================================================
+# History hours validation
+# =========================================================================
+
+
+class TestValidateHistoryHours:
+    def test_valid(self):
+        assert validate_history_hours(24) == 24
+
+    def test_min(self):
+        assert validate_history_hours(MIN_HISTORY_HOURS) == MIN_HISTORY_HOURS
+
+    def test_max(self):
+        assert validate_history_hours(MAX_HISTORY_HOURS) == MAX_HISTORY_HOURS
+
+    def test_rejects_zero(self):
+        with pytest.raises(SecurityError, match="positive integer"):
+            validate_history_hours(0)
+
+    def test_rejects_negative(self):
+        with pytest.raises(SecurityError, match="positive integer"):
+            validate_history_hours(-1)
+
+    def test_rejects_too_large(self):
+        with pytest.raises(SecurityError, match="too large"):
+            validate_history_hours(MAX_HISTORY_HOURS + 1)
+
+
+# =========================================================================
+# Event limit validation
+# =========================================================================
+
+
+class TestValidateEventLimit:
+    def test_valid(self):
+        assert validate_event_limit(100) == 100
+
+    def test_one(self):
+        assert validate_event_limit(1) == 1
+
+    def test_max(self):
+        assert validate_event_limit(MAX_EVENT_LIMIT) == MAX_EVENT_LIMIT
+
+    def test_rejects_zero(self):
+        with pytest.raises(SecurityError, match="positive integer"):
+            validate_event_limit(0)
+
+    def test_rejects_negative(self):
+        with pytest.raises(SecurityError, match="positive integer"):
+            validate_event_limit(-1)
+
+    def test_rejects_too_large(self):
+        with pytest.raises(SecurityError, match="too large"):
+            validate_event_limit(MAX_EVENT_LIMIT + 1)
+
+
+# =========================================================================
 # Error message sanitization
 # =========================================================================
 
@@ -613,6 +807,44 @@ class TestRateLimiter:
         for _ in range(60):
             assert limiter.allow("unknown_op") is True
         assert limiter.allow("unknown_op") is False
+
+    # --- New categories ---
+
+    def test_stats_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(30):
+            assert limiter.allow("stats") is True
+        assert limiter.allow("stats") is False
+
+    def test_dpi_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(20):
+            assert limiter.allow("dpi") is True
+        assert limiter.allow("dpi") is False
+
+    def test_security_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(30):
+            assert limiter.allow("security") is True
+        assert limiter.allow("security") is False
+
+    def test_clients_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(30):
+            assert limiter.allow("clients") is True
+        assert limiter.allow("clients") is False
+
+    def test_devices_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(30):
+            assert limiter.allow("devices") is True
+        assert limiter.allow("devices") is False
+
+    def test_rf_capacity(self):
+        limiter = RateLimiter()
+        for _ in range(20):
+            assert limiter.allow("rf") is True
+        assert limiter.allow("rf") is False
 
 
 # =========================================================================

@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 from typing import Any
+from urllib.parse import urlparse
 
 
 # Configuration
@@ -27,6 +28,7 @@ MAX_TAGS_COUNT = 10
 MAX_MEMORY_ID_LENGTH = 128
 MAX_SUBJECT_LENGTH = 100
 MAX_PREDICATE_LENGTH = 100
+MAX_URL_LENGTH = 2000
 
 
 class SecurityError(Exception):
@@ -297,7 +299,7 @@ def validate_temporal_date(date_str: str) -> str:
         datetime(year, month, day)
     except ValueError:
         msg = f"Invalid date: {date_str}"
-        raise SecurityError(msg)
+        raise SecurityError(msg) from None
 
     return date_str
 
@@ -360,6 +362,113 @@ def validate_predicate(predicate: str) -> str:
     return predicate
 
 
+def validate_url(url: str) -> str:
+    """Validate URL for web crawling (with SSRF prevention).
+
+    Args:
+        url: URL string to validate.
+
+    Returns:
+        str: Validated URL.
+
+    Raises:
+        SecurityError: If URL is invalid or points to internal network.
+    """
+    if not url or not isinstance(url, str):
+        msg = "URL must be a non-empty string"
+        raise SecurityError(msg)
+
+    url = url.strip()
+
+    if len(url) > MAX_URL_LENGTH:
+        msg = f"URL too long (maximum {MAX_URL_LENGTH} characters)"
+        raise SecurityError(msg)
+
+    if not re.match(r"^https?://", url, re.IGNORECASE):
+        msg = "URL must start with http:// or https://"
+        raise SecurityError(msg)
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    # Block private/internal IPs (SSRF prevention)
+    blocked_patterns = [
+        r"^localhost$",
+        r"^127\.",
+        r"^10\.",
+        r"^172\.(1[6-9]|2[0-9]|3[0-1])\.",
+        r"^192\.168\.",
+        r"^0\.",
+        r"^\[?::1\]?$",
+        r"^169\.254\.",
+    ]
+
+    for pattern in blocked_patterns:
+        if re.match(pattern, hostname, re.IGNORECASE):
+            msg = "URL points to a private/internal address (not allowed)"
+            raise SecurityError(msg)
+
+    return url
+
+
+def validate_github_repo(repo: str) -> str:
+    """Validate GitHub repository format (owner/repo).
+
+    Args:
+        repo: Repository in 'owner/repo' format.
+
+    Returns:
+        str: Validated repository string.
+
+    Raises:
+        SecurityError: If repo format is invalid.
+    """
+    if not repo or not isinstance(repo, str):
+        msg = "Repository must be a non-empty string"
+        raise SecurityError(msg)
+
+    repo = repo.strip()
+
+    if not re.match(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$", repo):
+        msg = f"Invalid repository format: '{repo}' (expected 'owner/repo')"
+        raise SecurityError(msg)
+
+    if len(repo) > 200:
+        msg = "Repository name too long (maximum 200 characters)"
+        raise SecurityError(msg)
+
+    return repo
+
+
+def validate_salience_boost(boost: float) -> float:
+    """Validate salience boost value for reinforcement.
+
+    Args:
+        boost: Salience boost amount (0.01-0.5).
+
+    Returns:
+        float: Validated boost value.
+
+    Raises:
+        SecurityError: If boost is out of range.
+    """
+    if not isinstance(boost, (int, float)):
+        msg = "Salience boost must be a number"
+        raise SecurityError(msg)
+
+    boost = float(boost)
+
+    if boost < 0.01:
+        msg = "Salience boost too small (minimum 0.01)"
+        raise SecurityError(msg)
+
+    if boost > 0.5:
+        msg = "Salience boost too large (maximum 0.5)"
+        raise SecurityError(msg)
+
+    return boost
+
+
 # ============================================================================
 # Rate Limiter (Token Bucket Algorithm)
 # ============================================================================
@@ -378,6 +487,9 @@ class RateLimiter:
             "get": (60, 60),
             "forget": (10, 10),
             "temporal": (30, 30),
+            "reinforce": (30, 30),
+            "ingest": (10, 10),
+            "decay": (5, 5),
         }
 
         # State: operation -> {"tokens": float, "last_update": float}

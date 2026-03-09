@@ -5,7 +5,7 @@ Connects locally to your UniFi console – all data stays on your LAN.
 
 ## Features
 
-- **17 Network tools**: networks, firewall policies, firewall zones, hotspot vouchers, system status
+- **37 Network tools**: networks, firewall, vouchers, site health, clients, devices, traffic stats, DPI, IPS, rogue APs, alarms, events, WiFi/RF, combined security overview
 - **Local-only access**: direct HTTPS to console on your LAN (no cloud dependency)
 - **Full CRUD**: create, read, update, delete for networks, firewall rules, and vouchers
 - **Security hardened** (v1.0):
@@ -48,18 +48,19 @@ PYTHONPATH=src pytest src/childermass/network_mcp/tests/ -v
 
 ```
 src/childermass/network_mcp/
-├── __init__.py      # Package metadata (v1.0.0)
+├── __init__.py      # Package metadata (v2.0.0)
 ├── auth.py          # Console session management + keyring credential storage
-├── client.py        # Network REST API wrapper + security validation
+├── client.py        # Integration API + Classic REST API wrappers
 ├── security.py      # Validators, rate limiter, audit logger
-├── server.py        # FastMCP server (17 tools)
+├── server.py        # FastMCP server (37 tools)
 ├── setup.sh         # One-command setup
 ├── requirements.txt # Dependencies
 ├── README.md        # This file
 ├── CHANGELOG.md     # Version history
 └── tests/
     ├── __init__.py
-    └── test_security.py  # Security validation tests
+    ├── test_security.py  # Security validation tests
+    └── test_client.py    # Client function + parser tests
 ```
 
 ## Tools
@@ -97,13 +98,57 @@ src/childermass/network_mcp/
 | `network_generate_vouchers` | Generate new guest access vouchers with time/data/speed limits |
 | `network_delete_voucher` | Delete a voucher |
 
+### Site Health & Status
+| Tool | Description |
+|------|-------------|
+| `network_get_site_health` | Overall health: device counts, WAN IP, ISP, uptime, CPU/memory |
+
+### Client Tools
+| Tool | Description |
+|------|-------------|
+| `network_list_active_clients` | List all connected clients (name, IP, signal, traffic) |
+| `network_get_client_details` | Get details for a specific client by MAC |
+| `network_get_client_history` | Traffic history for a client (hourly buckets) |
+| `network_block_client` | Block a client by MAC |
+| `network_unblock_client` | Unblock a previously blocked client |
+| `network_reconnect_client` | Force-reconnect (kick) a wireless client |
+
+### Device Tools
+| Tool | Description |
+|------|-------------|
+| `network_list_devices` | List all adopted APs, switches, gateways |
+| `network_get_device_details` | Get details for a device by MAC |
+| `network_restart_device` | Restart (reboot) a UniFi device |
+
+### Traffic & DPI Tools
+| Tool | Description |
+|------|-------------|
+| `network_get_site_stats` | Aggregated site traffic (hourly/daily/5min) |
+| `network_get_dpi_stats` | Deep Packet Inspection stats by app or category |
+| `network_get_client_dpi` | Per-client DPI (app usage breakdown) |
+
+### Security Tools
+| Tool | Description |
+|------|-------------|
+| `network_list_ips_events` | IPS intrusion alerts (with src/dst IP, action) |
+| `network_list_rogue_aps` | Detected rogue / neighbouring access points |
+| `network_list_alarms` | System alarms and notifications |
+| `network_archive_alarm` | Archive (acknowledge) an alarm |
+| `network_get_security_overview` | Combined security dashboard: IPS + rogues + alarms + blocked clients |
+
+### Event & WiFi Tools
+| Tool | Description |
+|------|-------------|
+| `network_list_events` | Controller event log (connections, changes, etc.) |
+| `network_get_rf_environment` | RF channel utilisation (spectrum scan or rogue aggregation) |
+
 ## Security Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Input validation | ✅ | All IDs (UUID), VLAN IDs (1-4094), policy actions validated |
 | Credential storage | ✅ | macOS Keychain with config file fallback (chmod 600) |
-| Rate limiting | ✅ | Token bucket: 30 networks/min, 20 firewall/min, 10 writes/min |
+| Rate limiting | ✅ | Token bucket per operation (networks, firewall, clients, devices, stats, dpi, security, rf, write) |
 | Audit logging | ✅ | JSON log at `~/.childermass/network-audit.log` |
 | Error sanitization | ✅ | IP addresses, cookies, passwords, API keys, tokens stripped |
 | Session management | ✅ | Auto re-login on 401, CSRF token handling |
@@ -127,8 +172,9 @@ python -m childermass.network_mcp.auth --revoke
 
 ## API Reference
 
-This server communicates with the UniFi Network local REST API:
-- Base URL: `https://{CONSOLE_IP}/proxy/network/integration/v1/`
+This server communicates with two UniFi local REST APIs:
+- **Integration API v1**: `https://{CONSOLE_IP}/proxy/network/integration/v1/` – Network CRUD, firewall, vouchers
+- **Classic REST API**: `https://{CONSOLE_IP}/proxy/network/api/s/{site}/` – Stats, clients, devices, DPI, IPS, alarms, events
 - Auth: Cookie-based session with CSRF token
 - Docs: https://developer.ui.com/network/v10.1.84/
 
@@ -136,9 +182,21 @@ This server communicates with the UniFi Network local REST API:
 | Endpoint | Purpose |
 |----------|---------|
 | `POST /api/auth/login` | Authentication |
-| `GET /proxy/network/integration/v1/info` | Application version |
+| `GET .../integration/v1/info` | Application version |
 | `GET/POST/PUT/DELETE .../sites/{siteId}/networks` | Network CRUD |
 | `GET/POST/PUT/DELETE .../sites/{siteId}/firewall/policies` | Firewall CRUD |
 | `GET/PUT .../sites/{siteId}/firewall/policies/ordering` | Policy ordering |
 | `GET/POST/PUT/DELETE .../sites/{siteId}/firewall/zones` | Zone CRUD |
 | `GET/POST/DELETE .../sites/{siteId}/hotspot/vouchers` | Voucher management |
+| `GET .../api/s/{site}/stat/health` | Site health |
+| `GET .../api/s/{site}/stat/sta` | Active clients |
+| `GET .../api/s/{site}/stat/device` | Devices |
+| `POST .../api/s/{site}/stat/report/{period}.site` | Traffic stats |
+| `GET .../api/s/{site}/stat/dpi` | DPI stats |
+| `GET .../api/s/{site}/stat/ips/event` | IPS events |
+| `GET .../api/s/{site}/stat/rogueap` | Rogue APs |
+| `GET .../api/s/{site}/stat/alarm` | Alarms |
+| `GET .../api/s/{site}/stat/event` | Events |
+| `POST .../api/s/{site}/cmd/stamgr` | Client block/unblock/kick |
+| `POST .../api/s/{site}/cmd/devmgr` | Device restart |
+| `POST .../api/s/{site}/cmd/evtmgr` | Alarm archive |

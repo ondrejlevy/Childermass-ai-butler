@@ -178,7 +178,7 @@ PYTHONPATH=src pytest --cov=src/childermass --cov-report=html
 Agent behavior is defined in `.opencode/agents/`:
 - `childermass.md` - Main coordinator agent
 - `radar.md` - Communications specialist (planned)
-- `kreacher.md` - Security specialist (planned)
+- `Krátura.md` - Security specialist (planned)
 - `jorge.md` - Information curator (planned)
 
 ## Development & CI/CD

@@ -11,4 +11,4 @@ Custom UniFi Network integration with security hardening:
 Run with: python -m childermass.network_mcp.server
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"

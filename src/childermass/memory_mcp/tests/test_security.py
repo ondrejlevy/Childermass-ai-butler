@@ -11,6 +11,7 @@ from childermass.memory_mcp.security import (
     MAX_QUERY_LENGTH,
     MAX_TAG_LENGTH,
     MAX_TAGS_COUNT,
+    MAX_URL_LENGTH,
     VALID_CATEGORIES,
     VALID_SECTORS,
     RateLimiter,
@@ -18,15 +19,18 @@ from childermass.memory_mcp.security import (
     audit_log,
     sanitize_error_message,
     validate_category,
+    validate_github_repo,
     validate_limit,
     validate_memory_content,
     validate_memory_id,
     validate_predicate,
     validate_query,
+    validate_salience_boost,
     validate_sector,
     validate_subject,
     validate_tags,
     validate_temporal_date,
+    validate_url,
 )
 
 
@@ -367,3 +371,162 @@ class TestAuditLog:
         content = fake_log.read_text()
         assert "store" in content
         assert "123" in content
+
+
+# ===========================================================================
+# validate_url
+# ===========================================================================
+
+
+class TestValidateUrl:
+    def test_valid_https(self):
+        assert validate_url("https://example.com") == "https://example.com"
+
+    def test_valid_http(self):
+        assert validate_url("http://example.com/page") == "http://example.com/page"
+
+    def test_strips_whitespace(self):
+        assert validate_url("  https://example.com  ") == "https://example.com"
+
+    def test_empty_raises(self):
+        with pytest.raises(SecurityError, match="URL.*empty|URL.*non-empty"):
+            validate_url("")
+
+    def test_none_raises(self):
+        with pytest.raises(SecurityError):
+            validate_url(None)
+
+    def test_no_scheme_raises(self):
+        with pytest.raises(SecurityError, match="http"):
+            validate_url("example.com")
+
+    def test_ftp_raises(self):
+        with pytest.raises(SecurityError, match="http"):
+            validate_url("ftp://example.com")
+
+    def test_too_long_raises(self):
+        with pytest.raises(SecurityError, match="URL.*long"):
+            validate_url("https://example.com/" + "x" * MAX_URL_LENGTH)
+
+    def test_localhost_blocked(self):
+        with pytest.raises(SecurityError, match="private"):
+            validate_url("http://localhost:8080/api")
+
+    def test_private_ip_127_blocked(self):
+        with pytest.raises(SecurityError, match="private"):
+            validate_url("http://127.0.0.1:3000")
+
+    def test_private_ip_192_blocked(self):
+        with pytest.raises(SecurityError, match="private"):
+            validate_url("http://192.168.1.1/admin")
+
+    def test_private_ip_10_blocked(self):
+        with pytest.raises(SecurityError, match="private"):
+            validate_url("http://10.0.0.1/internal")
+
+    def test_private_ip_172_blocked(self):
+        with pytest.raises(SecurityError, match="private"):
+            validate_url("http://172.16.0.1/secret")
+
+    def test_public_ip_ok(self):
+        assert validate_url("https://8.8.8.8") == "https://8.8.8.8"
+
+
+# ===========================================================================
+# validate_github_repo
+# ===========================================================================
+
+
+class TestValidateGithubRepo:
+    def test_valid_repo(self):
+        assert validate_github_repo("CaviraOSS/OpenMemory") == "CaviraOSS/OpenMemory"
+
+    def test_strips_whitespace(self):
+        assert validate_github_repo("  owner/repo  ") == "owner/repo"
+
+    def test_empty_raises(self):
+        with pytest.raises(SecurityError, match="[Rr]epository.*empty|[Rr]epository.*non-empty"):
+            validate_github_repo("")
+
+    def test_none_raises(self):
+        with pytest.raises(SecurityError):
+            validate_github_repo(None)
+
+    def test_no_slash_raises(self):
+        with pytest.raises(SecurityError, match="[Rr]epository.*format"):
+            validate_github_repo("just-repo-name")
+
+    def test_multiple_slashes_raises(self):
+        with pytest.raises(SecurityError, match="[Rr]epository.*format"):
+            validate_github_repo("owner/repo/extra")
+
+    def test_dots_and_hyphens_ok(self):
+        assert validate_github_repo("my-org/my.repo") == "my-org/my.repo"
+
+    def test_too_long_raises(self):
+        with pytest.raises(SecurityError, match="[Rr]epository.*long"):
+            validate_github_repo("a" * 100 + "/" + "b" * 101)
+
+
+# ===========================================================================
+# validate_salience_boost
+# ===========================================================================
+
+
+class TestValidateSalienceBoost:
+    def test_valid_boost(self):
+        assert validate_salience_boost(0.1) == 0.1
+
+    def test_min_boost(self):
+        assert validate_salience_boost(0.01) == 0.01
+
+    def test_max_boost(self):
+        assert validate_salience_boost(0.5) == 0.5
+
+    def test_int_converted_to_float(self):
+        # Expects SecurityError because 1 > 0.5
+        with pytest.raises(SecurityError, match="[Ss]alience.*large"):
+            validate_salience_boost(1)
+
+    def test_too_small_raises(self):
+        with pytest.raises(SecurityError, match="[Ss]alience.*small"):
+            validate_salience_boost(0.001)
+
+    def test_too_large_raises(self):
+        with pytest.raises(SecurityError, match="[Ss]alience.*large"):
+            validate_salience_boost(0.6)
+
+    def test_string_raises(self):
+        with pytest.raises(SecurityError, match="[Ss]alience.*number"):
+            validate_salience_boost("0.1")
+
+    def test_none_raises(self):
+        with pytest.raises(SecurityError):
+            validate_salience_boost(None)
+
+
+# ===========================================================================
+# RateLimiter — new operations
+# ===========================================================================
+
+
+class TestRateLimiterNewOps:
+    def test_reinforce_operation(self):
+        limiter = RateLimiter()
+        limiter.check("reinforce")  # Should not raise
+
+    def test_ingest_operation(self):
+        limiter = RateLimiter()
+        limiter.check("ingest")  # Should not raise
+
+    def test_decay_operation(self):
+        limiter = RateLimiter()
+        limiter.check("decay")  # Should not raise
+
+    def test_decay_burst_blocked(self):
+        limiter = RateLimiter()
+        # Exhaust the "decay" bucket (capacity 5)
+        for _ in range(5):
+            limiter.check("decay")
+        with pytest.raises(SecurityError, match="[Rr]ate"):
+            limiter.check("decay")

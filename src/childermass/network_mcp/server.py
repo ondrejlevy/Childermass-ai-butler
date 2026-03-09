@@ -611,6 +611,488 @@ def network_delete_voucher(
 
 
 # ---------------------------------------------------------------------------
+# Health / System tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_get_site_health() -> dict:
+    """
+    Get overall site health status.
+
+    Returns subsystem statuses (www, wan, lan, wlan), device counts,
+    WAN IP, ISP info, speed test results, and gateway resource usage.
+    Ideal for daily health checks and proactive issue detection.
+
+    Returns:
+        Health summary with subsystem statuses, device counts, and metrics
+    """
+    try:
+        health = client.get_site_health()
+        return asdict(health)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Client tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_list_active_clients() -> list[dict] | dict:
+    """
+    List all clients currently connected to the network.
+
+    Returns MAC, hostname, IP, network name, wired/wireless, traffic,
+    signal strength (Wi-Fi), and manufacturer for each client.
+    Useful for monitoring who is on the network and detecting unknown devices.
+
+    Returns:
+        List of active clients with connection details
+    """
+    try:
+        clients = client.list_active_clients()
+        return [asdict(c) for c in clients]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_get_client_details(mac: str) -> dict:
+    """
+    Get detailed information for a specific client by MAC address.
+
+    Args:
+        mac: Client MAC address (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Client details including traffic, signal, hostname, blocked status
+    """
+    try:
+        c = client.get_client_details(mac=mac)
+        return asdict(c)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_get_client_history(
+    mac: str,
+    hours: int = 24,
+) -> list[dict] | dict:
+    """
+    Get traffic history for a specific client (hourly buckets).
+
+    Useful for detecting unusual bandwidth usage or activity patterns.
+
+    Args:
+        mac: Client MAC address (aa:bb:cc:dd:ee:ff format)
+        hours: Hours of history to fetch (default 24, max 8760)
+
+    Returns:
+        List of hourly traffic buckets with rx/tx bytes
+    """
+    try:
+        return client.get_client_history(mac=mac, hours=hours)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_block_client(mac: str) -> dict:
+    """
+    Block a client from the network by MAC address.
+
+    ⚠️ Action: The client will be immediately disconnected and prevented
+    from reconnecting. Use for security incidents (unknown device, breach).
+
+    Args:
+        mac: Client MAC address to block (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Confirmation of block action
+    """
+    try:
+        client.block_client(mac=mac)
+        return {"blocked": True, "mac": mac}
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_unblock_client(mac: str) -> dict:
+    """
+    Unblock a previously blocked client.
+
+    Args:
+        mac: Client MAC address to unblock (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Confirmation of unblock action
+    """
+    try:
+        client.unblock_client(mac=mac)
+        return {"unblocked": True, "mac": mac}
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_reconnect_client(mac: str) -> dict:
+    """
+    Force-reconnect (kick) a wireless client.
+
+    The client will be disconnected and must reassociate. Useful for
+    fixing connectivity issues without blocking the device.
+
+    Args:
+        mac: Client MAC address to reconnect (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Confirmation of reconnect action
+    """
+    try:
+        client.reconnect_client(mac=mac)
+        return {"reconnected": True, "mac": mac}
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Device tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_list_devices() -> list[dict] | dict:
+    """
+    List all adopted UniFi network devices (access points, switches, gateways).
+
+    Returns model, name, type, firmware version, uptime, client count,
+    CPU/memory usage, and adoption state for each device.
+    Useful for monitoring device health and detecting offline equipment.
+
+    Returns:
+        List of devices with status and resource metrics
+    """
+    try:
+        devices = client.list_devices()
+        return [asdict(d) for d in devices]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_get_device_details(mac: str) -> dict:
+    """
+    Get detailed information for a specific UniFi device by MAC.
+
+    Args:
+        mac: Device MAC address (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Device details including model, firmware, uptime, clients, CPU/memory
+    """
+    try:
+        d = client.get_device_details(mac=mac)
+        return asdict(d)
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_restart_device(mac: str) -> dict:
+    """
+    Restart (reboot) a UniFi network device.
+
+    ⚠️ Action: The device will go offline for 1-3 minutes during reboot.
+    Connected clients will be temporarily disconnected.
+
+    Args:
+        mac: Device MAC address to restart (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        Confirmation of restart command
+    """
+    try:
+        client.restart_device(mac=mac)
+        return {"restarted": True, "mac": mac}
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Traffic statistics tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_get_site_stats(
+    period: str = "hourly",
+) -> list[dict] | dict:
+    """
+    Get aggregated site traffic statistics (WAN rx/tx, client counts).
+
+    Returns time-series data bucketed by period for the last 24 hours.
+    Useful for detecting traffic anomalies and bandwidth trends.
+
+    Args:
+        period: Aggregation period – "hourly", "daily", or "5minutes"
+
+    Returns:
+        List of time-bucketed traffic statistics
+    """
+    try:
+        stats = client.get_site_stats(period=period)
+        return [asdict(s) for s in stats]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# DPI tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_get_dpi_stats(dpi_type: str = "by_app") -> list[dict] | dict:
+    """
+    Get Deep Packet Inspection traffic statistics.
+
+    Shows which applications and categories are consuming bandwidth.
+    Useful for detecting unexpected traffic patterns (e.g., torrent, VPN tunnels).
+
+    Args:
+        dpi_type: Aggregation – "by_app" (per application) or "by_cat" (per category)
+
+    Returns:
+        List of DPI entries with category, app, and traffic bytes/packets
+    """
+    try:
+        stats = client.get_dpi_stats(dpi_type=dpi_type)
+        return [asdict(s) for s in stats]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_get_client_dpi(mac: str) -> list[dict] | dict:
+    """
+    Get DPI (application usage) stats for a specific client.
+
+    Shows which apps/categories a particular device is using.
+    Useful for investigating suspicious client behaviour.
+
+    Args:
+        mac: Client MAC address (aa:bb:cc:dd:ee:ff format)
+
+    Returns:
+        List of DPI entries for the client with app, category, bytes
+    """
+    try:
+        stats = client.get_client_dpi(mac=mac)
+        return [asdict(s) for s in stats]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# Security tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_list_ips_events(limit: int = 100) -> list[dict] | dict:
+    """
+    List recent Intrusion Prevention System (IPS) events.
+
+    Shows detected threats, blocked connections, and security alerts.
+    Critical for security monitoring – review regularly for breach indicators.
+
+    Args:
+        limit: Max events to return (default 100, max 10000)
+
+    Returns:
+        List of IPS events with source/dest IPs, threat category, action
+    """
+    try:
+        events = client.list_ips_events(limit=limit)
+        return [asdict(e) for e in events]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_list_rogue_aps() -> list[dict] | dict:
+    """
+    List detected rogue and neighboring access points.
+
+    Detects unauthorized APs that could be evil twins or signal interference.
+    Critical for wireless security monitoring.
+
+    Returns:
+        List of rogue/neighboring APs with BSSID, SSID, channel, signal strength
+    """
+    try:
+        rogues = client.list_rogue_aps()
+        return [asdict(r) for r in rogues]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_list_alarms(
+    limit: int = 100,
+    archived: bool = False,
+) -> list[dict] | dict:
+    """
+    List system alarms (security alerts, device issues, connectivity problems).
+
+    Shows controller-generated alerts about device failures, security events,
+    and network issues. Review unhandled alarms for actionable items.
+
+    Args:
+        limit: Max alarms to return (default 100, max 10000)
+        archived: Include already-handled/archived alarms (default: False)
+
+    Returns:
+        List of alarms with message, datetime, archive/handled status
+    """
+    try:
+        alarms = client.list_alarms(limit=limit, archived=archived)
+        return [asdict(a) for a in alarms]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_archive_alarm(alarm_id: str) -> dict:
+    """
+    Archive (acknowledge) an alarm.
+
+    Marks an alarm as handled so it no longer appears in unhandled lists.
+
+    Args:
+        alarm_id: Alarm ID to archive
+
+    Returns:
+        Confirmation of archive action
+    """
+    try:
+        client.archive_alarm(alarm_id=alarm_id)
+        return {"archived": True, "alarm_id": alarm_id}
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_list_events(limit: int = 100) -> list[dict] | dict:
+    """
+    List recent controller events (device connections, client activity, etc.).
+
+    General event log useful for troubleshooting and activity auditing.
+    Distinct from IPS events – these cover device, WLAN, and system events.
+
+    Args:
+        limit: Max events to return (default 100, max 10000)
+
+    Returns:
+        List of events with type, message, datetime, and subsystem
+    """
+    try:
+        events = client.list_events(limit=limit)
+        return [asdict(e) for e in events]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+@mcp.tool()
+def network_get_security_overview() -> dict:
+    """
+    Get a comprehensive security overview for the home network.
+
+    Combines IPS events, rogue APs, alarms, and blocked clients into
+    a single actionable summary. This is the primary tool for the AI
+    assistant's security monitoring workflow.
+
+    Returns:
+        Security overview with IPS summary, rogue APs, unhandled alarms,
+        blocked clients, and issue list
+    """
+    try:
+        return client.get_security_overview()
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
+# WiFi / RF tools (Classic API)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def network_get_rf_environment(mac: str = "") -> list[dict] | dict:
+    """
+    Get RF (radio frequency) channel environment and utilisation.
+
+    Shows channel congestion, neighbouring BSS count, and interference.
+    Useful for diagnosing Wi-Fi performance issues and optimising channels.
+
+    Args:
+        mac: Optional AP MAC to get data for a specific AP (empty = all APs)
+
+    Returns:
+        List of RF channels with utilisation, interference, and BSS counts
+    """
+    try:
+        channels = client.get_rf_environment(mac=mac or None)
+        return [asdict(ch) for ch in channels]
+    except SecurityError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": sanitize_error_message(e)}
+
+
+# ---------------------------------------------------------------------------
 # Server entry point
 # ---------------------------------------------------------------------------
 
