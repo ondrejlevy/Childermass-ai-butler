@@ -2,7 +2,7 @@
 mcp>=1.26.0,<2.0.0
 
 # HTTP Client
-requests>=2.31.0,<3.0.0
+requests>=2.33.0,<3.0.0
 
 # Security & Validation
 keyring>=25.7.0,<26.0.0
