@@ -6,6 +6,7 @@ __description__ = (
     "MCP server for persistent memory storage, semantic recall, and temporal knowledge graph"
 )
 
+
 def __getattr__(name: str):
     """Lazy-load server exports so package imports don't pull runtime-only dependencies."""
     if name == "mcp":

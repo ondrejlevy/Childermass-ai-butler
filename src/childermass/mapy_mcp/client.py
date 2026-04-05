@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-import requests  # type: ignore[import-untyped]
+import requests
 
 from .auth import get_api_key
 from .security import (
