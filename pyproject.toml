@@ -66,10 +66,6 @@ strict_equality = true
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "tests.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "*.tests.*"
 ignore_errors = true
 
@@ -86,7 +82,7 @@ disable_error_code = ["no-any-return"]
 [[tool.mypy.overrides]]
 module = "*.client"
 # Client modules may return Any from external APIs
-disable_error_code = ["no-any-return"]
+disable_error_code = ["no-any-return", "import-untyped"]
 
 # ===========================================================================
 # Pytest Configuration
