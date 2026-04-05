@@ -6,7 +6,14 @@ __description__ = (
     "MCP server for persistent memory storage, semantic recall, and temporal knowledge graph"
 )
 
-from .server import mcp
+def __getattr__(name: str):
+    """Lazy-load server exports so package imports don't pull runtime-only dependencies."""
+    if name == "mcp":
+        from .server import mcp
+
+        return mcp
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
 
 
 __all__ = ["__version__", "mcp"]

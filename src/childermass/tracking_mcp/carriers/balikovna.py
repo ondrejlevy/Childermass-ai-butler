@@ -75,6 +75,7 @@ class BalikovnaParser(CarrierParser):
                 continue
 
             # Typical format: Date | Time | Location | Status
+            event_location: str | None = None
             if len(cells) >= 4:
                 date_text = cells[0].get_text(strip=True)
                 time_text = cells[1].get_text(strip=True)

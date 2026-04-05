@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from .auth import get_api_key
 from .security import (
@@ -447,6 +447,9 @@ class WeatherClient:
 
         # Convert city to coordinates if needed
         if loc_type == "city":
+            if city is None:
+                msg = "City location validation returned no city name"
+                raise SecurityError(msg)
             coords = self.geocode_city(city)
             lat, lon = coords.latitude, coords.longitude
             location_str = city

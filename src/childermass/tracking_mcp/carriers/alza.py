@@ -70,7 +70,9 @@ class AlzaParser(CarrierParser):
                 continue
 
             # Check if step is active/completed
-            _is_active = "active" in event.get("class", []) or "completed" in event.get("class", [])
+            classes = event.get("class")
+            class_list = classes if isinstance(classes, list) else []
+            _is_active = "active" in class_list or "completed" in class_list
 
             date_el = event.select_one(".date, .step-date")
             timestamp = date_el.get_text(strip=True) if date_el else None

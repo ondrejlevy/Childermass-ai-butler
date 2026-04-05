@@ -642,8 +642,12 @@ class TrackingClient:
         updated_shipment = self._db.get_shipment(shipment_id)
         history = self._db.get_history(shipment_id)
 
+        if updated_shipment is None:
+            msg = f"Shipment disappeared after status update: {shipment_id}"
+            raise RuntimeError(msg)
+
         return ShipmentDetail(
-            shipment=updated_shipment,  # type: ignore[arg-type]
+            shipment=updated_shipment,
             history=history,
         )
 
