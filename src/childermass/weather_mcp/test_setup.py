@@ -10,38 +10,36 @@ src_path = Path(__file__).parent.parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 
-# Test 1: Import modules
-try:
-    from childermass.weather_mcp.auth import get_api_key
-    from childermass.weather_mcp.client import get_client
-    from childermass.weather_mcp.security import SecurityError
-except ImportError:
-    sys.exit(1)
+def main() -> int:
+    # Import lazily so pytest collection can import this module without executing setup checks.
+    try:
+        from childermass.weather_mcp.auth import get_api_key
+        from childermass.weather_mcp.client import get_client
+        from childermass.weather_mcp.security import SecurityError
+    except ImportError:
+        return 1
+
+    try:
+        get_api_key()
+    except Exception:
+        return 1
+
+    try:
+        client = get_client()
+        client.get_current_weather("London", "metric")
+    except SecurityError as error:
+        error_msg = str(error)
+        if "Invalid API key" in error_msg or "401" in error_msg:
+            return 1
+        return 1
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+    return 0
 
 
-# Test 2: Check API key
-try:
-    api_key = get_api_key()
-except Exception:
-    sys.exit(1)
-
-
-# Test 3: Test weather API
-
-try:
-    client = get_client()
-    weather = client.get_current_weather("London", "metric")
-
-
-except SecurityError as e:
-    error_msg = str(e)
-    if "Invalid API key" in error_msg or "401" in error_msg:
-        sys.exit(1)
-    else:
-        sys.exit(1)
-
-except Exception:
-    import traceback
-
-    traceback.print_exc()
-    sys.exit(1)
+if __name__ == "__main__":
+    raise SystemExit(main())

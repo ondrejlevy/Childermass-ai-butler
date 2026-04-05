@@ -13,6 +13,7 @@ Run with:
 """
 
 import json
+import os
 from unittest.mock import patch
 
 import pytest
@@ -559,8 +560,9 @@ class TestAuthConfig:
             )
 
             assert config_file.exists()
-            # File should have restricted permissions
-            assert oct(config_file.stat().st_mode)[-3:] == "600"
+            # Windows does not expose POSIX-style ACLs through st_mode.
+            if os.name != "nt":
+                assert config_file.stat().st_mode & 0o777 == 0o600
 
             config = load_config()
             assert config is not None
