@@ -10,5 +10,5 @@ keyring>=25.7.0,<26.0.0
 validators>=0.35.0,<1.0.0
 
 # Testing
-pytest>=9.0.2,<10.0.0
+pytest>=9.0.3,<10.0.0
 pytest-cov>=7.1.0,<8.0.0
