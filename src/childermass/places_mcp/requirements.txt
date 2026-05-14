@@ -1,5 +1,5 @@
 # Core MCP Framework
-mcp>=1.27.0,<2.0.0
+mcp>=1.27.1,<2.0.0
 
 # Google Auth & API
 google-auth>=2.50.0,<3.0.0
