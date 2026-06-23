@@ -1,5 +1,5 @@
 # Core MCP Framework
-mcp>=1.27.2,<2.0.0
+mcp>=1.28.0,<2.0.0
 
 # Google Keep API (unofficial)
 gkeepapi>=0.17.1
