@@ -1,5 +1,5 @@
 # Core MCP Framework
-mcp>=1.27.2,<2.0.0
+mcp>=2.0.0,<3.0.0
 
 # HTTP Client
 requests>=2.34.2,<3.0.0
